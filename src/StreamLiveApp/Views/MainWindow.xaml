@@ -268,6 +268,16 @@
                         </StackPanel>
                     </Border>
 
+                    <Border x:Name="PrivateBadge" Background="#33E8A33D" BorderBrush="#E8A33D" BorderThickness="1"
+                            CornerRadius="4" Padding="8,3" Margin="0,0,12,0" VerticalAlignment="Center"
+                            Visibility="Collapsed">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" Foreground="#E8A33D" FontSize="11"
+                                       VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <TextBlock Text="PRIVADA" Foreground="#E8A33D" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
                     <TextBlock Text="Tela:" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold"/>
                     <ComboBox x:Name="CboWindows" Width="130" Margin="0,0,10,0" DisplayMemberPath="Title"
                               VerticalAlignment="Center" Height="30"
@@ -599,7 +609,7 @@
 
         <!-- Settings Modal Overlay -->
         <Grid x:Name="SettingsModalOverlay" Grid.RowSpan="4" Background="#99000000" Visibility="Collapsed" Panel.ZIndex="100">
-            <Border Background="#18181E" Width="450" Height="300" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Border Background="#18181E" Width="520" MaxHeight="{Binding ActualHeight, ElementName=SettingsModalOverlay}" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Border.Effect>
                     <DropShadowEffect Color="Black" BlurRadius="20" Opacity="0.5" ShadowDepth="5"/>
                 </Border.Effect>
@@ -650,29 +660,19 @@
                         
                         <!-- Settings Tab -->
                         <TabItem Header="Settings" FontSize="14" FontWeight="SemiBold">
-                            <Grid Margin="10,20,10,10">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,20,10,10">
                                 <StackPanel>
-                                    <CheckBox x:Name="ChkMaxPerformance" Content="Modo leve (usa menos CPU)" Foreground="White" FontSize="14" IsChecked="True" Checked="ChkMaxPerformance_Changed" Unchecked="ChkMaxPerformance_Changed"/>
+                                    <CheckBox x:Name="ChkFriendsOnly" Content="Aceitar conexões somente de amigos salvos" Foreground="White" FontSize="14" IsChecked="True" Checked="ChkFriendsOnly_Changed" Unchecked="ChkFriendsOnly_Changed"/>
                                     <TextBlock Foreground="#8A8A94" FontSize="11" Margin="26,4,0,0" TextWrapping="Wrap"
-                                               Text="Codifica mais rápido, usa escala mais simples e cede prioridade de CPU aos outros programas. Desligue para uma imagem um pouco melhor, ao custo de mais CPU."/>
-                                    <TextBlock Text="Ativar esta opção diminui a prioridade do aplicativo para garantir que seus jogos rodem com mais FPS, além de otimizar os cálculos da transmissão." Foreground="#AAAAAA" FontSize="12" TextWrapping="Wrap" Margin="20,5,0,0"/>
+                                               Text="Com esta opção desligada, qualquer máquina da VPN consegue entrar em uma live sem senha."/>
 
-                                    <CheckBox x:Name="ChkFriendsOnly" Content="Aceitar conexões somente de amigos salvos" Foreground="White" FontSize="14" IsChecked="True" Margin="0,18,0,0" Checked="ChkFriendsOnly_Changed" Unchecked="ChkFriendsOnly_Changed"/>
-                                    <TextBlock Text="Com esta opção desligada, qualquer máquina da VPN consegue entrar em uma live sem senha." Foreground="#AAAAAA" FontSize="12" TextWrapping="Wrap" Margin="20,5,0,0"/>
-
-                                    <CheckBox x:Name="ChkForceGdiCapture" Content="Usar captura clássica de tela (GDI)" Foreground="White" FontSize="14" Margin="0,18,0,0" Checked="ChkForceGdiCapture_Changed" Unchecked="ChkForceGdiCapture_Changed"/>
-                                    <TextBlock x:Name="CaptureModeText" Foreground="#8A8A94" FontSize="11" Margin="26,4,0,0"
+                                    <TextBlock Text="Captura de tela" Foreground="White" FontSize="14" Margin="0,18,0,0"/>
+                                    <TextBlock Foreground="#8A8A94" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"
+                                               Text="A tela é capturada pela Desktop Duplication (DXGI). Quando ela não está disponível — sessão remota, jogo em tela cheia exclusiva —, o app cai sozinho para a captura clássica (GDI)."/>
+                                    <TextBlock x:Name="CaptureModeText" Foreground="#8A8A94" FontSize="11" Margin="0,6,0,0"
                                                TextWrapping="Wrap" Text="Modo de captura: —"/>
-                                    <TextBlock Text="Por padrão a tela é capturada pela Desktop Duplication (DXGI), mais leve. Marque esta opção se a transmissão ficar preta, travada ou com a imagem deslocada." Foreground="#AAAAAA" FontSize="12" TextWrapping="Wrap" Margin="20,5,0,0"/>
-
-                                    <TextBlock Text="Excluir o áudio de um programa" Foreground="White" FontSize="14" Margin="0,18,0,0"/>
-                                    <TextBlock Text="O áudio deste programa não entra na transmissão — útil para o app de chamada de voz, evitando que seus amigos ouçam a si mesmos." Foreground="#AAAAAA" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,6"/>
-                                    <ComboBox x:Name="CboAudioExclusion" Height="30" FontSize="13"
-                                              DropDownOpened="CboAudioExclusion_DropDownOpened"
-                                              SelectionChanged="CboAudioExclusion_SelectionChanged"/>
-                                    <TextBlock x:Name="AudioExclusionWarning" Foreground="#E8A33D" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"/>
                                 </StackPanel>
-                            </Grid>
+                            </ScrollViewer>
                         </TabItem>
                         
                         <!-- Info Tab -->

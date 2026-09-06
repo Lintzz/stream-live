@@ -45,6 +45,11 @@ namespace StreamLiveApp
 
         private PipWindow? _activePip;
         private string _lastRoomPassword = string.Empty;
+
+        // Escolhas de privacidade da última live, para pré-preencher a próxima. Ficam só em
+        // memória, como a senha: nada disso é gravado em disco, então fechar o app zera.
+        private bool _lastPrivateLive;
+        private IReadOnlyList<string> _lastInvitedIps = Array.Empty<string>();
         private string? _downloadUrl;
         private string? _downloadChecksumUrl;
 
@@ -97,7 +102,6 @@ namespace StreamLiveApp
                         MessageBoxButton.OK, MessageBoxImage.Warning));
 
             _settings = SettingsService.Load();
-            _excludedAudioProcessName = _settings.ExcludedAudioProcessName;
             ApplyLoadedSettings();
 
             _friends = new ObservableCollection<Friend>(FriendsService.LoadFriends());
@@ -116,7 +120,6 @@ namespace StreamLiveApp
             UpdateSidebarEmptyStates();
 
             VersionText.Text = "Versão " + AppInfo.Version;
-            LoadAudioExclusionOptions();
 
             var updateResult = await UpdateManager.CheckForUpdatesAsync();
             if (updateResult.HasUpdate)
@@ -464,11 +467,13 @@ namespace StreamLiveApp
                 return;
             }
 
-            var passwordDialog = RoomPasswordDialog.ForHost(_lastRoomPassword);
+            var passwordDialog = RoomPasswordDialog.ForHost(_lastRoomPassword, _friends, _lastPrivateLive, _lastInvitedIps);
             passwordDialog.Owner = this;
             if (passwordDialog.ShowDialog() != true) return;
 
             _lastRoomPassword = passwordDialog.Password ?? string.Empty;
+            _lastPrivateLive = passwordDialog.IsPrivateLive;
+            _lastInvitedIps = passwordDialog.InvitedIps;
 
             _isBroadcasting = true;
             BtnStartStream.Visibility = Visibility.Collapsed;
@@ -476,6 +481,10 @@ namespace StreamLiveApp
             BtnTogglePreview.Visibility = Visibility.Visible;
             ViewerCountPanel.Visibility = Visibility.Visible;
             LiveBadge.Visibility = Visibility.Visible;
+            PrivateBadge.Visibility = _lastPrivateLive ? Visibility.Visible : Visibility.Collapsed;
+            PrivateBadge.ToolTip = _lastInvitedIps.Count == 1
+                ? "Live privada — 1 amigo convidado. Os demais veem você como offline."
+                : $"Live privada — {_lastInvitedIps.Count} amigos convidados. Os demais veem você como offline.";
             UpdateScreenOverlapWarning();
 
             // As lives abertas silenciam: o som delas voltaria para os seus viewers pelo loopback.
@@ -487,8 +496,8 @@ namespace StreamLiveApp
             {
                 Source = selectedSource,
                 RoomPassword = _lastRoomPassword,
-                MaxPerformance = ChkMaxPerformance?.IsChecked == true,
-                ForceGdiCapture = ChkForceGdiCapture?.IsChecked == true,
+                PrivateLive = _lastPrivateLive,
+                InvitedIps = _lastInvitedIps,
                 ExcludedAudioProcessId = ResolveExcludedAudioPid()
             });
         }
@@ -506,6 +515,7 @@ namespace StreamLiveApp
             BtnTogglePreview.IsChecked = false;
             ViewerCountPanel.Visibility = Visibility.Collapsed;
             LiveBadge.Visibility = Visibility.Collapsed;
+            PrivateBadge.Visibility = Visibility.Collapsed;
             ScreenOverlapWarning.Visibility = Visibility.Collapsed;
 
             // Devolve o som só das lives que o próprio app silenciou.
@@ -1152,57 +1162,38 @@ namespace StreamLiveApp
         private void BtnCloseSettingsModal_Click(object sender, RoutedEventArgs e)
             => SettingsModalOverlay.Visibility = Visibility.Collapsed;
 
-        private void ChkMaxPerformance_Changed(object sender, RoutedEventArgs e)
-        {
-            if (ChkMaxPerformance == null) return;
-
-            ApplyLightweightMode(ChkMaxPerformance.IsChecked == true);
-            PersistSettings();
-        }
-
         /// <summary>
-        /// Efeito do modo leve, separado do handler porque também precisa rodar na carga das
-        /// preferências: marcar um CheckBox no valor em que ele já está não dispara evento
-        /// nenhum, então confiar no handler deixaria a preferência salva sem aplicar.
+        /// BelowNormal é intencional e não é mais opcional: o app cede CPU aos outros
+        /// programas — o jogo que você está transmitindo, principalmente. Isto já foi a opção
+        /// "Modo leve"; na prática ninguém a desligava, e o caminho Normal só existia no papel.
         /// </summary>
-        private void ApplyLightweightMode(bool lightweight)
+        private static void ApplyLowProcessPriority()
         {
             try
             {
-                // BelowNormal é intencional: o modo leve cede CPU aos outros programas (o
-                // jogo que você está transmitindo, principalmente). O rótulo antigo dizia
-                // "Desempenho Máximo" e prometia o contrário do que a opção faz.
-                Process.GetCurrentProcess().PriorityClass = lightweight
-                    ? ProcessPriorityClass.BelowNormal
-                    : ProcessPriorityClass.Normal;
+                Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.BelowNormal;
             }
             catch { }
-
-            _hostBroadcast?.ApplyMaxPerformance(lightweight);
         }
 
         /// <summary>
-        /// Reflete nos controles o que foi lido do settings.json. Os handlers disparam ao
-        /// marcar cada caixa — é assim que a prioridade do processo e a captura GDI passam a
-        /// valer —, e a trava evita que essa carga regrave o arquivo que acabou de ser lido.
+        /// Reflete nos controles o que foi lido do settings.json. A trava evita que essa carga
+        /// regrave o arquivo que acabou de ser lido.
         /// </summary>
         private void ApplyLoadedSettings()
         {
             _loadingSettings = true;
             try
             {
-                ChkMaxPerformance.IsChecked = _settings.LightweightMode;
                 ChkFriendsOnly.IsChecked = _settings.RestrictToFriends;
-                ChkForceGdiCapture.IsChecked = _settings.ForceGdiCapture;
             }
             finally
             {
                 _loadingSettings = false;
             }
 
-            // O servidor ainda não existe aqui (sobe logo abaixo, já lendo ChkFriendsOnly) e o
-            // GDI é lido ao iniciar a transmissão. Só a prioridade precisa ser aplicada agora.
-            ApplyLightweightMode(_settings.LightweightMode);
+            // O servidor ainda não existe aqui — sobe logo abaixo, já lendo ChkFriendsOnly.
+            ApplyLowProcessPriority();
         }
 
         /// <summary>Grava o estado atual dos controles de configuração.</summary>
@@ -1210,75 +1201,24 @@ namespace StreamLiveApp
         {
             if (_loadingSettings) return;
 
-            _settings.LightweightMode = ChkMaxPerformance?.IsChecked == true;
             _settings.RestrictToFriends = ChkFriendsOnly?.IsChecked != false;
-            _settings.ForceGdiCapture = ChkForceGdiCapture?.IsChecked == true;
-            _settings.ExcludedAudioProcessName = _excludedAudioProcessName;
 
             SettingsService.Save(_settings);
         }
 
-        // ──────────────────── Exclusão de áudio por processo ────────────────────
-
         private Services.AppSettings _settings = new();
 
-        // Vem do settings.json e, na primeira execução, do padrão de fábrica (Discord). Começar
-        // vazio fazia toda abertura do app voltar a "capturar todo o áudio", e aí a mesa inteira
-        // se escutava sem ninguém entender por quê.
-        private string _excludedAudioProcessName = Services.AppSettings.DefaultExcludedAudioProcessName;
+        // O áudio do Discord fica sempre FORA da transmissão: sem isso a voz dos outros sai
+        // pelos seus alto-falantes, o loopback recaptura e a mesa inteira se escuta em eco.
+        // Já foi uma escolha nas configurações; era sempre este o valor.
+        private const string ExcludedAudioProcess = "Discord";
 
-        private void LoadAudioExclusionOptions()
-        {
-            var options = Services.AudioExclusionService.ListOptions(_excludedAudioProcessName);
-
-            CboAudioExclusion.ItemsSource = options;
-            CboAudioExclusion.SelectedItem = options.FirstOrDefault(o =>
-                string.Equals(o.Name, _excludedAudioProcessName, StringComparison.OrdinalIgnoreCase)) ?? options[0];
-
-            UpdateAudioExclusionWarning();
-        }
-
-        private void CboAudioExclusion_DropDownOpened(object sender, EventArgs e) => LoadAudioExclusionOptions();
-
-        private void CboAudioExclusion_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-        {
-            if (CboAudioExclusion.SelectedItem is not Services.AudioExclusionOption option) return;
-
-            _excludedAudioProcessName = option.Name;
-            UpdateAudioExclusionWarning();
-
-            PersistSettings();
-
-            // Vale já na transmissão em andamento.
-            _hostBroadcast?.ApplyExcludedAudioProcess(ResolveExcludedAudioPid());
-        }
-
-        private uint ResolveExcludedAudioPid()
-            => Services.AudioExclusionService.ResolvePid(_excludedAudioProcessName);
-
-        /// <summary>Avisa quando o programa escolhido não está aberto — nesse caso nada é excluído.</summary>
-        private void UpdateAudioExclusionWarning()
-        {
-            if (AudioExclusionWarning == null) return;
-
-            if (!string.IsNullOrEmpty(_excludedAudioProcessName) && ResolveExcludedAudioPid() == 0)
-            {
-                AudioExclusionWarning.Text =
-                    $"\"{_excludedAudioProcessName}\" não está em execução — enquanto isso, todo o áudio do sistema será transmitido.";
-                AudioExclusionWarning.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                AudioExclusionWarning.Visibility = Visibility.Collapsed;
-            }
-        }
-
-        private void ChkForceGdiCapture_Changed(object sender, RoutedEventArgs e)
-        {
-            _hostBroadcast?.ApplyForceGdiCapture(ChkForceGdiCapture?.IsChecked == true);
-            PersistSettings();
-            UpdateCaptureModeText();
-        }
+        /// <summary>
+        /// PID do Discord, ou 0 quando ele não está aberto — e o 0 faz a captura voltar ao
+        /// loopback do sistema inteiro, sem exclusão nenhuma.
+        /// </summary>
+        private static uint ResolveExcludedAudioPid()
+            => Services.AudioExclusionService.ResolvePid(ExcludedAudioProcess);
 
         /// <summary>
         /// Mostra qual caminho de captura está valendo. O DXGI cai sozinho para o GDI em

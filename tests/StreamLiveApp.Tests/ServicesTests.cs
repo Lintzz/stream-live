@@ -5,42 +5,9 @@ namespace StreamLiveApp.Tests;
 
 public class AudioExclusionServiceTests
 {
-    [Fact]
-    public void ListOptions_AlwaysOffersNone()
-    {
-        var options = AudioExclusionService.ListOptions(null);
-
-        Assert.NotEmpty(options);
-        Assert.Equal(string.Empty, options[0].Name);
-        Assert.Equal(AudioExclusionService.NoneDisplayName, options[0].DisplayName);
-    }
-
-    [Fact]
-    public void ListOptions_KeepsCurrentSelectionEvenWhenNotRunning()
-    {
-        var options = AudioExclusionService.ListOptions("ProgramaQueNaoExiste_XYZ");
-
-        var match = Assert.Single(options, o => o.Name == "ProgramaQueNaoExiste_XYZ");
-        Assert.Contains("não está em execução", match.DisplayName);
-    }
-
-    [Fact]
-    public void ListOptions_NeverRepeatsAProcessName()
-    {
-        // A escolha atual é acrescentada quando não está na lista de janelas. Se essa
-        // checagem falhasse, o programa escolhido apareceria duas vezes no dropdown.
-        var self = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
-
-        var options = AudioExclusionService.ListOptions(self);
-        var names = options.Select(o => o.Name).ToList();
-
-        Assert.Equal(names.Count, names.Distinct(StringComparer.OrdinalIgnoreCase).Count());
-    }
-
     /// <summary>
-    /// O dropdown só lista programas com janela — são os que o usuário reconhece. Mas o
-    /// ResolvePid aceita qualquer processo, senão a escolha salva deixaria de valer sempre
-    /// que o programa estivesse rodando sem janela visível.
+    /// O ResolvePid aceita qualquer processo, com janela ou sem: o Discord pode estar
+    /// rodando minimizado na bandeja, e nem por isso o áudio dele deve entrar na live.
     /// </summary>
     [Fact]
     public void ResolvePid_FindsAProcessEvenWithoutAWindow()
@@ -61,7 +28,7 @@ public class AudioExclusionServiceTests
     [Fact]
     public void ResolvePid_ReturnsZeroWhenProcessIsNotRunning()
     {
-        // É este 0 que faz o app cair para "capturar tudo" — e a UI avisa o usuário.
+        // É este 0 que faz o app cair para "capturar tudo" quando o Discord está fechado.
         Assert.Equal(0u, AudioExclusionService.ResolvePid("ProgramaQueNaoExiste_XYZ"));
     }
 
@@ -174,57 +141,42 @@ public class FriendStatusServiceTests
 public class AppSettingsTests
 {
     /// <summary>
-    /// Os padrões de fábrica valem na primeira execução, quando não há settings.json. O do
-    /// Discord é o que impede a mesa inteira de se escutar sem ninguém entender por quê.
+    /// Os padrões de fábrica valem na primeira execução, quando não há settings.json.
     /// </summary>
     [Fact]
     public void FactoryDefaultsAreTheSafeOnes()
     {
         var settings = new AppSettings();
 
-        Assert.Equal("Discord", settings.ExcludedAudioProcessName);
-        Assert.Equal(AppSettings.DefaultExcludedAudioProcessName, settings.ExcludedAudioProcessName);
         Assert.True(settings.RestrictToFriends);
-        Assert.True(settings.LightweightMode);
-        Assert.False(settings.ForceGdiCapture);
     }
 
     [Fact]
     public void SettingsSurviveARoundTripThroughJson()
     {
-        var original = new AppSettings
-        {
-            ExcludedAudioProcessName = "Spotify",
-            LightweightMode = false,
-            RestrictToFriends = false,
-            ForceGdiCapture = true
-        };
+        var original = new AppSettings { RestrictToFriends = false };
 
         var json = System.Text.Json.JsonSerializer.Serialize(original);
         var back = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(json);
 
         Assert.NotNull(back);
-        Assert.Equal(original.ExcludedAudioProcessName, back!.ExcludedAudioProcessName);
-        Assert.Equal(original.LightweightMode, back.LightweightMode);
-        Assert.Equal(original.RestrictToFriends, back.RestrictToFriends);
-        Assert.Equal(original.ForceGdiCapture, back.ForceGdiCapture);
+        Assert.Equal(original.RestrictToFriends, back!.RestrictToFriends);
     }
 
     /// <summary>
-    /// Um settings.json gravado por uma versão anterior não tem os campos novos. Eles têm de
-    /// cair no padrão de fábrica, não em false — senão atualizar o app desligaria calado a
-    /// restrição a amigos.
+    /// Um settings.json gravado por uma versão anterior traz campos que já não existem (o
+    /// modo leve, o GDI forçado, a exclusão de áudio por nome). Eles têm de ser ignorados sem
+    /// erro, e o que sobrou tem de cair no padrão de fábrica, não em false — senão atualizar o
+    /// app desligaria calado a restrição a amigos.
     /// </summary>
     [Fact]
     public void OlderSettingsFileKeepsTheSafeDefaultsForNewFields()
     {
-        var json = """{"ExcludedAudioProcessName":"Discord"}""";
+        var json = """{"ExcludedAudioProcessName":"Discord","LightweightMode":false,"ForceGdiCapture":true}""";
 
         var settings = System.Text.Json.JsonSerializer.Deserialize<AppSettings>(json);
 
         Assert.NotNull(settings);
         Assert.True(settings!.RestrictToFriends);
-        Assert.True(settings.LightweightMode);
-        Assert.False(settings.ForceGdiCapture);
     }
 }

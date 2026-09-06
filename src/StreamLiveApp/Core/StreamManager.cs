@@ -28,7 +28,6 @@ namespace StreamLiveApp
         private IVideoEncoder? _videoEncoder;
         private readonly object _encoderLock = new object();
         private int _isEncoding = 0;
-        private bool _isMaxPerformance = true;
 
         // Keyframe por tempo decorrido, não por contagem de frames: a taxa real de captura
         // varia bastante, então "a cada 120 frames" dava um intervalo imprevisível.
@@ -388,13 +387,6 @@ namespace StreamLiveApp
         // está montando uma transmissão. O viewer não chama nenhum, e é assim que ele escapa
         // de abrir dispositivo de áudio e vídeo que nunca usaria.
 
-        /// <summary>Força o caminho GDI de captura (ver <see cref="VideoCapturer"/>).</summary>
-        public void SetForceGdiCapture(bool forceGdi)
-        {
-            EnsureCapturers();
-            _videoCapturer!.SetForceGdiCapture(forceGdi);
-        }
-
         /// <summary>
         /// Caminho de captura em uso — "DXGI" ou "GDI". Leitura pura: não materializa nada,
         /// devolve "—" enquanto não há captura montada.
@@ -407,23 +399,6 @@ namespace StreamLiveApp
             _videoCapturer!.SetResolution(width, height);
         }
 
-        public void SetMaxPerformanceMode(bool isMaxPerformance)
-        {
-            EnsureCapturers();
-            _isMaxPerformance = isMaxPerformance;
-            _videoCapturer!.SetMaxPerformanceMode(isMaxPerformance);
-
-            lock (_encoderLock)
-            {
-                if (_videoEncoder != null)
-                {
-                    _videoEncoder.Dispose();
-                    _videoEncoder = null;
-                    InitEncoder();
-                }
-            }
-        }
-
         public void SetTargetSource(CaptureSource source)
         {
             EnsureCapturers();
@@ -431,8 +406,9 @@ namespace StreamLiveApp
         }
 
         /// <summary>
-        /// Define qual processo fica FORA da captura de áudio (0 = capturar tudo). Antes isto
-        /// era fixo no Discord e invisível para o usuário; agora vem da escolha nas configurações.
+        /// Define qual processo fica FORA da captura de áudio (0 = capturar tudo). Na prática
+        /// é sempre o Discord, resolvido pela UI antes de subir a live: sem isso a mesa se
+        /// escuta em eco.
         /// </summary>
         public void SetExcludedAudioProcess(uint processId)
         {
@@ -448,10 +424,11 @@ namespace StreamLiveApp
                 {
                     // A versão atual do SIPSorcery para .NET 8 não expõe API para selecionar NVENC/AMF nativamente.
                     // Portanto, usamos o libx264 com perfil 'ultrafast' e 'zerolatency' para garantir baixíssimo uso de CPU,
-                    // simulando a performance de uma GPU. Quando não estiver no modo desempenho, usa 'veryfast'.
+                    // simulando a performance de uma GPU. Já houve um 'veryfast' opcional aqui: a diferença de
+                    // imagem não se via em campo e o custo de CPU sim, então o ultrafast virou fixo.
                     var x264Options = new Dictionary<string, string>
                     {
-                        { "preset", _isMaxPerformance ? "ultrafast" : "veryfast" },
+                        { "preset", "ultrafast" },
                         { "tune", "zerolatency" }
                     };
 

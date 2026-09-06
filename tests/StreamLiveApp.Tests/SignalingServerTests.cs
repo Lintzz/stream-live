@@ -135,6 +135,68 @@ public class SignalingServerLifecycleTests
         }
     }
 
+    [Fact]
+    public void PrivateLiveHidesTheStreamFromFriendsWhoWereNotInvited()
+    {
+        var friends = Ips("26.10.0.9", "26.10.0.10");
+        var invited = Ips("26.10.0.9");
+
+        // O convidado entra e vê a live...
+        Assert.True(SignalingServer.ShouldAcceptConnection("26.10.0.9", true, friends, true, invited));
+
+        // ...e o amigo não convidado nem abre conexão. É a recusa que o faz ver o host como
+        // offline, em vez de "online, sem transmitir".
+        Assert.False(SignalingServer.ShouldAcceptConnection("26.10.0.10", true, friends, true, invited));
+    }
+
+    [Fact]
+    public void WithoutAPrivateLiveEveryFriendKeepsSeeingTheStream()
+    {
+        var friends = Ips("26.10.0.9", "26.10.0.10");
+
+        Assert.True(SignalingServer.ShouldAcceptConnection("26.10.0.9", true, friends, false, Ips()));
+        Assert.True(SignalingServer.ShouldAcceptConnection("26.10.0.10", true, friends, false, Ips()));
+    }
+
+    /// <summary>
+    /// Os dois portões são independentes: ser convidado não fura a lista de amigos, e ter a
+    /// restrição a amigos desligada não faz a live privada vazar.
+    /// </summary>
+    [Fact]
+    public void TheTwoGatesDoNotLoosenEachOther()
+    {
+        Assert.False(SignalingServer.ShouldAcceptConnection(
+            "26.10.0.11", true, Ips("26.10.0.9"), true, Ips("26.10.0.11")));
+
+        Assert.False(SignalingServer.ShouldAcceptConnection(
+            "26.10.0.11", false, Ips(), true, Ips("26.10.0.9")));
+    }
+
+    [Fact]
+    public void LocalhostPassesBothGatesEvenWithNobodyInvited()
+    {
+        // É assim que o app consulta o próprio status — e é o que mantém os testes de
+        // handshake e de status funcionando em loopback.
+        Assert.True(SignalingServer.ShouldAcceptConnection("127.0.0.1", true, Ips(), true, Ips()));
+    }
+
+    [Fact]
+    public void EndingAPrivateLiveMakesTheHostVisibleAgain()
+    {
+        var server = new SignalingServer { RestrictToAllowedIps = true };
+        server.SetAllowedIps(new[] { "26.10.0.10" });
+
+        server.SetLiveVisibility(true, new[] { "26.10.0.9" });
+        Assert.False(server.IsIpAllowed("26.10.0.10"));
+
+        // O caminho do AnnounceStop: sem isto o host continuaria invisível depois de parar.
+        server.SetLiveVisibility(false, null);
+        Assert.True(server.IsIpAllowed("26.10.0.10"));
+    }
+
+    private static IReadOnlySet<string> Ips(params string[] ips)
+        => new HashSet<string>(ips, StringComparer.OrdinalIgnoreCase);
+
     private static int FreePort()
     {
         var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);

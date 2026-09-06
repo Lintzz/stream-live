@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace StreamLiveApp
@@ -8,8 +9,11 @@ namespace StreamLiveApp
     {
         public required CaptureSource Source { get; init; }
         public string RoomPassword { get; init; } = string.Empty;
-        public bool MaxPerformance { get; init; } = true;
-        public bool ForceGdiCapture { get; init; }
+
+        /// <summary>Live privada: só <see cref="InvitedIps"/> enxerga que ela existe.</summary>
+        public bool PrivateLive { get; init; }
+        public IReadOnlyList<string> InvitedIps { get; init; } = Array.Empty<string>();
+
         public uint ExcludedAudioProcessId { get; init; }
         public int Width { get; init; } = 1920;
         public int Height { get; init; } = 1080;
@@ -44,6 +48,12 @@ namespace StreamLiveApp
 
         public bool IsBroadcasting { get; private set; }
 
+        /// <summary>A live no ar é privada? Vale para o selo na janela do host.</summary>
+        public bool IsPrivateLive { get; private set; }
+
+        /// <summary>Quantos amigos foram convidados para a live privada em curso.</summary>
+        public int InvitedCount { get; private set; }
+
         /// <summary>Caminho de captura em uso — "DXGI" ou "GDI".</summary>
         public string ActiveCaptureMode => _streamManager?.ActiveCaptureMode ?? "—";
 
@@ -61,7 +71,6 @@ namespace StreamLiveApp
             var manager = new StreamManager();
             _streamManager = manager;
 
-            manager.SetMaxPerformanceMode(settings.MaxPerformance);
             manager.OnAudioCaptureError += (error) => AudioCaptureError?.Invoke(error);
             manager.OnLocalSdpReady += (clientId, sdpJson) => _server?.SendToClient(clientId, sdpJson);
             manager.OnLocalVideoFrameReady += (pixels, width, height, stride) => FrameReady?.Invoke(pixels, width, height);
@@ -73,8 +82,12 @@ namespace StreamLiveApp
             if (_server != null)
             {
                 _server.RoomPassword = settings.RoomPassword;
+                _server.SetLiveVisibility(settings.PrivateLive, settings.InvitedIps);
                 _server.IsStreaming = true;
             }
+
+            IsPrivateLive = settings.PrivateLive;
+            InvitedCount = settings.PrivateLive ? settings.InvitedIps.Count : 0;
 
             // Fora da thread de UI: iniciar a captura e o encoder trava por algumas centenas
             // de milissegundos.
@@ -82,7 +95,6 @@ namespace StreamLiveApp
             {
                 manager.SetTargetSource(settings.Source);
                 manager.SetExcludedAudioProcess(settings.ExcludedAudioProcessId);
-                manager.SetForceGdiCapture(settings.ForceGdiCapture);
                 manager.SetResolution(settings.Width, settings.Height);
                 manager.InitializeHost();
             });
@@ -124,6 +136,11 @@ namespace StreamLiveApp
             _server.IsStreaming = false;
             _server.BroadcastMessage("STREAM_STOPPED");
             _server.RoomPassword = string.Empty;
+
+            // Sem isto o host continuaria invisível para os não convidados depois de parar.
+            _server.SetLiveVisibility(false, null);
+            IsPrivateLive = false;
+            InvitedCount = 0;
         }
 
         private StreamManager? TakeStreamManager()
@@ -132,11 +149,6 @@ namespace StreamLiveApp
             _streamManager = null;
             return manager;
         }
-
-        /// <summary>Reflete mudanças feitas nas configurações com a live já no ar.</summary>
-        public void ApplyMaxPerformance(bool maxPerformance) => _streamManager?.SetMaxPerformanceMode(maxPerformance);
-        public void ApplyForceGdiCapture(bool forceGdi) => _streamManager?.SetForceGdiCapture(forceGdi);
-        public void ApplyExcludedAudioProcess(uint processId) => _streamManager?.SetExcludedAudioProcess(processId);
 
         /// <summary>
         /// Troca o monitor transmitido sem derrubar a live. O keyframe imediato evita que os

@@ -26,7 +26,6 @@ namespace StreamLiveApp
 
         private int _maxWidth = 1920;
         private int _maxHeight = 1080;
-        private bool _isMaxPerformance = true;
 
         // ── Buffers reaproveitados ────────────────────────────────────────────────
         private readonly object _bufferLock = new object();
@@ -55,7 +54,6 @@ namespace StreamLiveApp
 
         private DesktopDuplicationGrabber? _duplication;
         private bool _duplicationUnavailable;
-        private bool _forceGdi;
         private Rectangle _duplicationBounds;
 
         // Se a duplicação foi criada mas nunca entrega quadro (acontece em sessões remotas e
@@ -91,36 +89,8 @@ namespace StreamLiveApp
         private readonly System.Diagnostics.Stopwatch _frameClock = System.Diagnostics.Stopwatch.StartNew();
         private long _lastFrameTicks;
 
-        /// <summary>
-        /// Força o caminho GDI (o mesmo de antes do DXGI). Válvula de escape para máquinas em
-        /// que a duplicação existe mas se comporta mal.
-        /// </summary>
-        public void SetForceGdiCapture(bool forceGdi)
-        {
-            lock (_bufferLock)
-            {
-                _forceGdi = forceGdi;
-                if (forceGdi)
-                {
-                    _duplication?.Dispose();
-                    _duplication = null;
-                    _duplicationUnavailable = true;
-                }
-                else
-                {
-                    _duplicationUnavailable = false;
-                    _duplicationFailures = 0;
-                }
-            }
-        }
-
         /// <summary>Qual caminho está ativo agora — mostrado nas configurações.</summary>
         public string ActiveCaptureMode => _duplicationUnavailable ? "GDI" : (_duplication != null ? "DXGI" : "—");
-
-        public void SetMaxPerformanceMode(bool isMaxPerformance)
-        {
-            _isMaxPerformance = isMaxPerformance;
-        }
 
         public void SetResolution(int width, int height)
         {
@@ -179,7 +149,9 @@ namespace StreamLiveApp
             {
                 _duplication?.Dispose();
                 _duplication = null;
-                _duplicationUnavailable = _forceGdi;
+                // Zera o veredito do fallback: o monitor novo merece uma chance no DXGI,
+                // mesmo que o anterior tenha acabado no GDI.
+                _duplicationUnavailable = false;
                 _duplicationFailures = 0;
                 _lastEmit = TimeSpan.MinValue;
                 _hasRealFrame = false;
@@ -377,9 +349,9 @@ namespace StreamLiveApp
                     _scaledGraphics = Graphics.FromImage(_scaledBitmap);
                 }
 
-                _scaledGraphics!.InterpolationMode = _isMaxPerformance
-                    ? System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor
-                    : System.Drawing.Drawing2D.InterpolationMode.Bilinear;
+                // Vizinho mais próximo: é a escala barata. O bilinear já foi opcional aqui e
+                // não pagava o custo de CPU que cobrava.
+                _scaledGraphics!.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
                 _scaledGraphics.DrawImage(source, 0, 0, outWidth, outHeight);
                 finalBitmap = _scaledBitmap;
             }
@@ -412,7 +384,7 @@ namespace StreamLiveApp
         /// <summary>Tenta o caminho DXGI; marca como indisponível de vez se não der para criar.</summary>
         private bool TryCaptureWithDuplication(Rectangle bounds)
         {
-            if (_duplicationUnavailable || _forceGdi) return false;
+            if (_duplicationUnavailable) return false;
 
             if (_duplication == null || _duplicationBounds != bounds)
             {

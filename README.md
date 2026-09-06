@@ -26,9 +26,12 @@ O projeto nasceu da seguinte necessidade:
 
 * **Para quem transmite (Host):**
   * Escolher qual monitor transmitir (suporte a múltiplas telas).
-  * Isolar o áudio de um programa específico — em *Configurações → Excluir o áudio de um programa*
-    você escolhe qual app fica fora da captura (ex.: o Discord, para evitar retorno nas chamadas).
-    Se o programa escolhido não estiver aberto, o app avisa que todo o áudio do sistema será transmitido.
+  * O áudio do Discord fica sempre fora da captura, para evitar retorno nas chamadas de voz.
+    Com o Discord fechado, o áudio do sistema inteiro é transmitido normalmente.
+  * Senha de sala opcional, pedida ao iniciar a transmissão.
+  * **Live privada:** marque quais amigos podem ver a transmissão. Para todos os outros você
+    aparece como offline, e nem a existência da live é anunciada — diferente da senha, que
+    barra a entrada mas deixa todo mundo ver que você está transmitindo.
   * O Host não ouve a própria transmissão.
 * **Para quem assiste (Join):**
   * Receber áudio e vídeo em alta qualidade (1080p).

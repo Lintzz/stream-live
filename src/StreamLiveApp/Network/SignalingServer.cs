@@ -27,6 +27,12 @@ namespace StreamLiveApp
         // Lista de amigos normalizada. Com a restrição ligada, ninguém de fora dela abre conexão.
         private readonly HashSet<string> _allowedIps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        // Convidados da live privada. Portão independente do de amigos: enquanto _privateLive
+        // vale, só estes IPs abrem conexão — os demais nem chegam a perguntar o status e,
+        // com a conexão recusada, veem o host como offline.
+        private readonly HashSet<string> _invitedIps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private bool _privateLive;
+
         // Estado por conexão usado para conter um viewer com a rede ruim. Vive fora de
         // _clients porque é escrito da thread de captura de áudio, ~50x/s.
         private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, ViewerLink> _links = new();
@@ -128,21 +134,86 @@ namespace StreamLiveApp
             }
         }
 
-        private bool IsIpAllowed(string rawIp)
+        /// <summary>
+        /// Define a visibilidade da live em curso. Com <paramref name="privateLive"/> ligado,
+        /// só os IPs convidados conseguem abrir conexão — para todo o resto o host some da
+        /// lista de amigos como se tivesse fechado o app. Chamada ao subir e ao encerrar a
+        /// live; encerrar precisa devolver <c>false</c>, senão o host fica invisível depois.
+        /// </summary>
+        public void SetLiveVisibility(bool privateLive, IEnumerable<string>? invitedIps)
         {
-            if (!RestrictToAllowedIps) return true;
-
-            var ip = NormalizeIp(rawIp);
-
-            // A própria máquina sempre passa, mesmo antes de SetAllowedIps ser chamado: é
-            // assim que o app consulta o próprio status, e evita que uma ordem de
-            // inicialização diferente tranque o usuário para fora de tudo.
-            if (ip == "127.0.0.1") return true;
+            List<IWebSocketConnection> toDrop;
 
             lock (_clientsLock)
             {
-                return _allowedIps.Contains(ip);
+                _privateLive = privateLive;
+                _invitedIps.Clear();
+                foreach (var ip in invitedIps ?? Enumerable.Empty<string>())
+                {
+                    var normalized = NormalizeIp(ip);
+                    if (!string.IsNullOrEmpty(normalized)) _invitedIps.Add(normalized);
+                }
+                _invitedIps.Add("127.0.0.1");
+
+                // Quem já estava conectado de uma live anterior não passaria mais pelo OnOpen,
+                // mas continuaria pendurado aqui vendo a live nova. Derruba agora.
+                toDrop = privateLive
+                    ? _clients.Where(c => !_invitedIps.Contains(NormalizeIp(c.ConnectionInfo.ClientIpAddress))).ToList()
+                    : new List<IWebSocketConnection>();
             }
+
+            // Fora do lock: fechar socket dispara o OnClose, que também quer o lock.
+            foreach (var client in toDrop)
+            {
+                try { client.Close(); } catch { }
+            }
+        }
+
+        /// <summary>Internal para os testes alcançarem os dois portões já com o estado real.</summary>
+        internal bool IsIpAllowed(string rawIp)
+        {
+            var ip = NormalizeIp(rawIp);
+
+            lock (_clientsLock)
+            {
+                return ShouldAcceptConnection(ip, RestrictToAllowedIps, _allowedIps, _privateLive, _invitedIps);
+            }
+        }
+
+        /// <summary>É a recusa de uma live privada, e não a da lista de amigos?</summary>
+        private bool IsHiddenByPrivateLive(string rawIp)
+        {
+            var ip = NormalizeIp(rawIp);
+
+            lock (_clientsLock)
+            {
+                return _privateLive && ip != "127.0.0.1" && !_invitedIps.Contains(ip);
+            }
+        }
+
+        /// <summary>
+        /// Os dois portões de entrada, como lógica pura. São independentes: a lista de
+        /// convidados de uma live privada nunca afrouxa a restrição a amigos, e a restrição a
+        /// amigos desligada não faz a live privada vazar.
+        ///
+        /// O loopback passa nos dois mesmo antes de qualquer lista chegar: é assim que o app
+        /// consulta o próprio status, e evita que uma ordem de inicialização diferente tranque
+        /// o usuário para fora de tudo.
+        /// </summary>
+        internal static bool ShouldAcceptConnection(
+            string normalizedIp,
+            bool restrictToFriends,
+            IReadOnlySet<string> allowedIps,
+            bool privateLive,
+            IReadOnlySet<string> invitedIps)
+        {
+            if (normalizedIp == "127.0.0.1") return true;
+
+            if (restrictToFriends && !allowedIps.Contains(normalizedIp)) return false;
+
+            if (privateLive && !invitedIps.Contains(normalizedIp)) return false;
+
+            return true;
         }
 
         /// <summary>
@@ -259,8 +330,20 @@ namespace StreamLiveApp
                     if (!IsIpAllowed(rawIp))
                     {
                         var normalized = NormalizeIp(rawIp);
-                        Debug.WriteLine($"[Server] Conexão recusada (fora da lista de amigos): {normalized}");
-                        OnConnectionRejected?.Invoke(normalized);
+
+                        // A recusa da live privada é silenciosa de propósito: ela é o
+                        // comportamento esperado, e cada amigo não convidado sonda o status a
+                        // cada 5s — avisar transformaria a barra de status num piscar contínuo.
+                        if (IsHiddenByPrivateLive(rawIp))
+                        {
+                            Debug.WriteLine($"[Server] Conexão recusada (live privada): {normalized}");
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"[Server] Conexão recusada (fora da lista de amigos): {normalized}");
+                            OnConnectionRejected?.Invoke(normalized);
+                        }
+
                         try { socket.Close(); } catch { }
                         return;
                     }
@@ -698,6 +781,8 @@ namespace StreamLiveApp
                 _viewers.Clear();
                 _authenticatedClients.Clear();
                 _challenges.Clear();
+                _privateLive = false;
+                _invitedIps.Clear();
             }
             _links.Clear();
 

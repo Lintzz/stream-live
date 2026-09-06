@@ -83,6 +83,13 @@ Detalhes que quebram fácil:
   broadcast, senão recebem áudio binário no lugar do `STATUS_RESPONSE`.
 - `SignalingServer.NormalizeIp` existe porque o Fleck entrega IPv4 mapeado (`::ffff:x.x.x.x`) e
   `::1`; sem normalizar, nada casa com a lista de amigos. `127.0.0.1` sempre passa.
+- O `OnOpen` tem **dois** portões independentes, decididos por `ShouldAcceptConnection` (lógica
+  pura, testada): a lista de amigos e, durante uma **live privada**, a lista de convidados
+  daquela live (`SetLiveVisibility`, zerada pelo `AnnounceStop`). Recusar no `OnOpen` é o que
+  esconde a live: o `FriendStatusService` do outro lado falha ao conectar e reporta *offline*,
+  e a mesma recusa nega a entrada, sem precisar filtrar `RegisterViewer` nem o broadcast. A
+  recusa por live privada **não** dispara `OnConnectionRejected`: o evento vira um aviso na
+  barra de status, e cada não convidado sonda a cada 5 s.
 - A senha nunca trafega: `CryptoHelper.ComputeAuthProof` devolve o HMAC do desafio com a chave
   PBKDF2 (200k iterações, salt fixo da aplicação, cache obrigatório — derivar custa ~100 ms e o
   áudio chamaria isso ~50×/s). Payload da sala é AES-GCM, formato `[nonce 12][tag 16][cipher]`.
@@ -100,10 +107,16 @@ essa decisão contra upgrades do SIPSorcery.
 
 `AudioCapturer` usa `WasapiLoopbackCapture` para o sistema inteiro, ou `ProcessAudioCapturer`
 (P/Invoke em `NativeLibs/ApplicationLoopback.dll`, Windows 10 20348+) para **excluir** um
-processo. O padrão é excluir o Discord: sem isso a mesa se escuta em eco. A escolha é persistida
-por **nome** de processo (`AudioExclusionService` resolve o PID a cada live, porque o programa
-pode ter sido reaberto). `SetTargetProcess` reabre a captura fora da thread de UI — os
+processo. O processo excluído é **sempre o Discord**: sem isso a mesa se escuta em eco. O alvo é
+fixado por **nome** (`AudioExclusionService.ResolvePid` resolve o PID a cada live, porque o
+programa pode ter sido reaberto); com o Discord fechado o PID sai 0 e a captura volta ao loopback
+do sistema inteiro, sem aviso. `SetTargetProcess` reabre a captura fora da thread de UI — os
 parâmetros só chegam ao Windows na abertura.
+
+Isto já foi um ComboBox nas configurações. Junto com ele saíram o "Modo leve" (agora fixo:
+preset `ultrafast`, escala por vizinho mais próximo e prioridade `BelowNormal`) e o toggle
+manual de captura GDI — o **fallback automático** DXGI→GDI descrito acima continua valendo.
+Nenhuma das três era usada como escolha; só um dos valores rodava.
 
 ### Persistência e estado
 
