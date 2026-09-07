@@ -180,3 +180,48 @@ public class AppSettingsTests
         Assert.True(settings!.RestrictToFriends);
     }
 }
+
+public class VpnStatusServiceTests
+{
+    /// <summary>
+    /// A ordem importa: o Radmin é 32 bits e mora no Program Files (x86); o segundo candidato
+    /// só existe para máquinas fora do padrão.
+    /// </summary>
+    [Fact]
+    public void PickExistingPath_ReturnsTheFirstCandidateThatExists()
+    {
+        var found = VpnStatusService.PickExistingPath(
+            new[] { @"C:\a\RvRvpnGui.exe", @"C:\b\RvRvpnGui.exe" },
+            p => p.StartsWith(@"C:\b"));
+
+        Assert.Equal(@"C:\b\RvRvpnGui.exe", found);
+    }
+
+    /// <summary>
+    /// Null é o sinal de "Radmin não instalado" — é ele que faz o modal esconder o botão de
+    /// abrir e virar só um aviso.
+    /// </summary>
+    [Fact]
+    public void PickExistingPath_ReturnsNullWhenNothingExists()
+    {
+        Assert.Null(VpnStatusService.PickExistingPath(
+            new[] { @"C:\a\RvRvpnGui.exe", @"C:\b\RvRvpnGui.exe" }, _ => false));
+    }
+
+    /// <summary>
+    /// GetFolderPath devolve string vazia quando a pasta especial não existe na máquina; o
+    /// Path.Combine então entrega um caminho relativo que não deve nem ser consultado.
+    /// </summary>
+    [Fact]
+    public void PickExistingPath_IgnoresEmptyCandidates()
+    {
+        var consulted = new System.Collections.Generic.List<string>();
+
+        var found = VpnStatusService.PickExistingPath(
+            new string?[] { null, "", "   ", @"C:\c\RvRvpnGui.exe" },
+            p => { consulted.Add(p); return true; });
+
+        Assert.Equal(@"C:\c\RvRvpnGui.exe", found);
+        Assert.Equal(new[] { @"C:\c\RvRvpnGui.exe" }, consulted);
+    }
+}

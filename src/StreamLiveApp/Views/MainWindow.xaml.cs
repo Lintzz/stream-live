@@ -141,6 +141,23 @@ namespace StreamLiveApp
             SizeChanged += (s2, e2) => UpdateScreenOverlapWarning();
 
             LoadScreens();
+
+            // Por último: o aviso é modal, e só faz sentido aparecer com a janela já montada
+            // e o servidor de sinalização de pé.
+            CheckVpnOnStartup();
+        }
+
+        /// <summary>
+        /// Sem a Radmin VPN aberta a lista de amigos fica inteira offline sem explicação. Só na
+        /// abertura: o timer de status (5 s) já repinta todo mundo assim que a VPN sobe.
+        /// </summary>
+        private void CheckVpnOnStartup()
+        {
+            if (VpnStatusService.IsRunning()) return;
+
+            var dialog = VpnWarningDialog.Create(VpnStatusService.FindExecutable());
+            dialog.Owner = this;
+            dialog.ShowDialog();
         }
 
         /// <summary>
