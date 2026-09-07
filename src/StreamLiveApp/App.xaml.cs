@@ -18,6 +18,12 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        // Primeira linha da sessão no diagnóstico: versão, build do Windows, GPU e dispositivo
+        // de áudio. Sem esse cabeçalho, um log recebido de um amigo não diz nem em que máquina
+        // foi gerado — e é justamente o build do Windows que decide metade do comportamento
+        // da captura de áudio.
+        DiagnosticLog.Session("evento=abertura do app");
+
         // Sem isso, uma exceção na thread de UI fecha a janela em silêncio e deixa o
         // processo vivo em segundo plano — o usuário só vê o app "sumir".
         DispatcherUnhandledException += OnDispatcherUnhandledException;
@@ -80,5 +86,9 @@ public partial class App : System.Windows.Application
                 $"=== {DateTime.Now:yyyy-MM-dd HH:mm:ss} [{origin}]{Environment.NewLine}{ex}{Environment.NewLine}{Environment.NewLine}");
         }
         catch { }
+
+        // Espelhado para o diagnóstico ficar com uma ordem só: separado, o error.log não se
+        // ordena com o resto e não dá para dizer o que veio antes do quê.
+        DiagnosticLog.Error(origin, "Excecao nao tratada", ex);
     }
 }

@@ -120,6 +120,11 @@ namespace StreamLiveApp
                 // Check if the OS supports process-specific audio capture
                 if (!ProcessAudioCapturer.IsSupported())
                 {
+                    DiagnosticLog.Warn("Audio",
+                        $"Captura por processo indisponivel neste Windows (build {Environment.OSVersion.Version.Build}, " +
+                        "exige 20348+); caindo para o loopback do sistema inteiro. " +
+                        "O audio do programa excluido volta a ser transmitido.");
+
                     OnCaptureError?.Invoke(
                         "Seu Windows não suporta captura de áudio por processo.\n" +
                         "Requer Windows 10 Build 20348+ ou Windows 11.\n" +
@@ -145,16 +150,25 @@ namespace StreamLiveApp
                 bool started = _processAudioCapturer.StartCapture(_targetProcessId, includeProcessTree: false);
                 if (!started)
                 {
+                    DiagnosticLog.Warn("Audio",
+                        $"Captura por processo (excluindo PID {_targetProcessId}) recusada pelo Windows; " +
+                        "caindo para o loopback do sistema inteiro.");
+
                     // Fallback to system-wide loopback
                     _useProcessCapture = false;
                     _processAudioCapturer?.Dispose();
                     _processAudioCapturer = null;
                     StartLoopbackLocked();
                 }
+                else
+                {
+                    DiagnosticLog.Info("Audio", $"Captura por processo ativa, excluindo o PID {_targetProcessId}.");
+                }
             }
             else
             {
                 // No specific process — use system-wide loopback
+                DiagnosticLog.Info("Audio", "Captura pelo loopback do sistema inteiro (nenhum processo a excluir).");
                 StartLoopbackLocked();
             }
         }
@@ -174,12 +188,31 @@ namespace StreamLiveApp
                     System.Threading.Thread.Sleep(20);
                 }
 
-                if (_loopbackCapture.CaptureState == NAudio.CoreAudioApi.CaptureState.Stopped)
+                var state = _loopbackCapture.CaptureState;
+                if (state == NAudio.CoreAudioApi.CaptureState.Stopped)
+                {
                     _loopbackCapture.StartRecording();
+                    DiagnosticLog.Info("Audio", "Loopback do sistema iniciado.");
+                    return;
+                }
+
+                // Já capturando é o caso benigno (uma reabertura que se cruzou com outra);
+                // qualquer outro estado significa que o StartRecording foi pulado — e era
+                // exatamente aqui que a live subia muda, para sempre, sem exceção nem aviso.
+                if (state == NAudio.CoreAudioApi.CaptureState.Capturing) return;
+
+                DiagnosticLog.Error("Audio",
+                    $"O dispositivo de audio nao saiu do estado {state} depois de 1s; a transmissao vai sem som.");
+                OnCaptureError?.Invoke(
+                    "O dispositivo de áudio não respondeu a tempo e a transmissão vai começar sem som.\n" +
+                    "Pare e inicie a live novamente para tentar de novo.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Loopback capture already started or failed: " + ex.Message);
+                // Isto só ia para o Console.WriteLine — invisível num app de janela, então na
+                // prática o erro não existia para ninguém.
+                DiagnosticLog.Error("Audio", "Falha ao iniciar o loopback do sistema", ex);
+                OnCaptureError?.Invoke("Falha ao iniciar a captura de áudio: " + ex.Message);
             }
         }
 

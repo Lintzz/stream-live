@@ -69,6 +69,13 @@ namespace StreamLiveApp
         private int _audioFramesSent;
         private int _audioFramesDecoded;
         private int _audioFailures;
+
+        // Quadros de áudio capturados que não tinham para quem ir. Separado dos enviados
+        // porque é a diferença entre "não está capturando" e "está capturando e ninguém
+        // recebe" — os dois chegam como "não vem som" no relato do usuário.
+        private int _audioFramesDropped;
+
+        private int _encodeFailures;
         private string? _audioFailureReason;
         private readonly object _audioLock = new object();
 
@@ -101,6 +108,22 @@ namespace StreamLiveApp
         /// <summary>Quadros de audio por segundo — enviados no host, decodificados no viewer.</summary>
         public event Action<int>? OnAudioStatsUpdated;
 
+        /// <summary>
+        /// Aviso de que a live está no ar mas não está entregando (texto), ou <c>null</c>
+        /// quando volta ao normal. Ver <see cref="AvaliarSaudeDaLive"/>.
+        /// </summary>
+        public event Action<string?>? OnHostHealthChanged;
+
+        // Resumo no log a cada 10s. A cada segundo encheria o arquivo sem acrescentar nada:
+        // o que se quer ver é a tendência, não o instante.
+        private const int StatsLogIntervalTicks = 10;
+        private int _statsTicks;
+
+        /// <summary>Tempo de tolerância antes de avisar o host de que a live não entrega.</summary>
+        private static readonly TimeSpan HealthGracePeriod = TimeSpan.FromSeconds(15);
+        private readonly Stopwatch _broadcastClock = new();
+        private string? _avisoAtual;
+
         /// <summary>Audio PCM para difusao pelo WebSocket (somente no modo legado).</summary>
         public event Action<byte[]>? OnBinaryDataReady;
 
@@ -131,6 +154,11 @@ namespace StreamLiveApp
 
         private static int _mediaInitialized;
 
+        /// <summary>
+        /// Grava no arquivo específico e espelha no <see cref="DiagnosticLog"/>. O espelho é o
+        /// que importa: separados, esses arquivos não se ordenam entre si nem com o resto, e
+        /// era impossível dizer se o encoder quebrou antes ou depois de o viewer entrar.
+        /// </summary>
         private static void WriteLog(string filename, string content)
         {
             try
@@ -155,8 +183,21 @@ namespace StreamLiveApp
                 Environment.CurrentDirectory = baseDir;
             }
 
-            try { SIPSorceryMedia.FFmpeg.FFmpegInit.Initialise(); }
-            catch (Exception ex) { WriteLog("ffmpeg_error.log", "Init Error: " + ex.ToString()); }
+            try
+            {
+                SIPSorceryMedia.FFmpeg.FFmpegInit.Initialise();
+                DiagnosticLog.Info("Video", "FFmpeg inicializado.");
+            }
+            catch (Exception ex)
+            {
+                WriteLog("ffmpeg_error.log", "Init Error: " + ex.ToString());
+
+                // Sem FFmpeg não há codec: a live sobe "no ar" e nunca sai um byte de vídeo.
+                // As causas em campo são DLL bloqueada pelo antivírus/SmartScreen e runtime
+                // do VC++ ausente — e nenhuma delas aparecia na tela do host.
+                DiagnosticLog.Error("Video",
+                    "FFmpeg NAO inicializou: nenhuma imagem sera transmitida (DLLs bloqueadas ou runtime ausente)", ex);
+            }
         }
 
         public StreamManager()
@@ -226,6 +267,14 @@ namespace StreamLiveApp
                                 catch (Exception encodeEx)
                                 {
                                     WriteLog("ffmpeg_encode_runtime_error.log", "Encode Run Error: " + encodeEx.ToString());
+
+                                    // Um encoder quebrado falha em todo quadro: o host continua
+                                    // vendo o próprio preview (que vem antes daqui) e acha que
+                                    // está transmitindo. Só a primeira falha vai ao diagnóstico;
+                                    // o contador do resumo periódico conta o volume.
+                                    System.Threading.Interlocked.Increment(ref _encodeFailures);
+                                    DiagnosticLog.Once("Video", "encode",
+                                        "Falha ao codificar o video; a live segue sem imagem: " + encodeEx);
                                 }
                             }
                         }
@@ -237,7 +286,15 @@ namespace StreamLiveApp
 
                             foreach (var pc in SnapshotConnectedPeers())
                             {
-                                try { pc.SendVideo(duration, encoded); } catch { }
+                                // Uma falha por peer não pode interromper o envio aos outros,
+                                // mas engolida por completo ela deixava um viewer sem imagem
+                                // sem indicação nenhuma nem no host nem nele.
+                                try { pc.SendVideo(duration, encoded); }
+                                catch (Exception sendEx)
+                                {
+                                    DiagnosticLog.Once("Video", "envio-" + pc.SessionID,
+                                        $"Falha ao enviar video para um viewer: {sendEx.GetBaseException().Message}");
+                                }
                             }
                         }
                     }
@@ -263,7 +320,11 @@ namespace StreamLiveApp
         private void OnCapturedPcm(byte[] pcm)
         {
             if (pcm == null || pcm.Length == 0) return;
-            if (HasAudioListeners != null && !HasAudioListeners()) return;
+            if (HasAudioListeners != null && !HasAudioListeners())
+            {
+                System.Threading.Interlocked.Increment(ref _audioFramesDropped);
+                return;
+            }
 
             // O buffer NAO e reaproveitado de proposito: sem senha de sala ele segue direto
             // para o Send do Fleck, que e assincrono. Reciclar o array por baixo de um envio
@@ -288,6 +349,7 @@ namespace StreamLiveApp
             _audioFailureReason = $"Falha ao {acao} audio: {ex.Message}";
 
             WriteLog("audio_error.log", $"[{acao}] {ex}");
+            DiagnosticLog.Error("Audio", $"Falha ao {acao} audio", ex);
             OnAudioCaptureError?.Invoke(_audioFailureReason);
         }
 
@@ -478,16 +540,82 @@ namespace StreamLiveApp
             _videoCapturer!.StartVideo();
             _audioCapturer!.StartAudio();
 
+            _broadcastClock.Restart();
+
             _hostStatsTimer = new System.Threading.Timer(_ =>
             {
                 var fps = System.Threading.Interlocked.Exchange(ref _statsEncodedFrames, 0);
                 var bytes = System.Threading.Interlocked.Exchange(ref _statsEncodedBytes, 0);
                 var audio = System.Threading.Interlocked.Exchange(ref _audioFramesSent, 0);
+                var semDestino = System.Threading.Interlocked.Exchange(ref _audioFramesDropped, 0);
                 OnHostStatsUpdated?.Invoke(fps, bytes * 8.0 / 1000.0);
                 OnAudioStatsUpdated?.Invoke(audio);
+
+                try { AvaliarSaudeDaLive(fps, bytes, audio, semDestino); } catch { }
             }, null, 1000, 1000);
 
+            DiagnosticLog.Session("papel=host");
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Resumo no diagnóstico e aviso na tela do host quando a live está claramente furada.
+        ///
+        /// Existe porque o preview do host vem de <see cref="OnLocalVideoFrameReady"/>, que é
+        /// disparado ANTES do encoder e da rede: o host vê a própria tela, a sobreposição
+        /// mostra fps e kbps saudáveis, e mesmo assim ninguém do outro lado recebe nada. A
+        /// contagem de peers na mesma linha é o que desfaz esse engano — os quadros contados
+        /// são os codificados, não os entregues.
+        /// </summary>
+        private void AvaliarSaudeDaLive(int fps, long bytes, int audio, int audioSemDestino)
+        {
+            var decorrido = _broadcastClock.Elapsed;
+            var (conectados, total) = ContarPeers();
+
+            if (++_statsTicks % StatsLogIntervalTicks == 0)
+            {
+                DiagnosticLog.Info("Live",
+                    $"video={fps}fps {bytes * 8.0 / 1000.0:F0}kbps falhasEncode={_encodeFailures} | " +
+                    $"audio={audio}/s semDestino={audioSemDestino}/s falhas={_audioFailures} | " +
+                    $"peers={conectados}/{total} | captura={ActiveCaptureMode}");
+            }
+
+            // A janela de carência cobre o handshake inteiro (ICE, senha, primeiro keyframe);
+            // avisar antes disso transformaria o começo normal de toda live num alerta.
+            if (decorrido < HealthGracePeriod) return;
+
+            string? aviso = null;
+            if (total > 0 && conectados == 0)
+            {
+                aviso = "Ninguém está recebendo sua imagem — verifique o firewall do Windows.";
+            }
+            else if (fps == 0)
+            {
+                aviso = "Sua tela não está sendo capturada — nada de imagem está saindo daqui.";
+            }
+            else if (conectados > 0 && audio == 0)
+            {
+                aviso = "Seu áudio não está sendo enviado.";
+            }
+
+            if (aviso == _avisoAtual) return;
+            _avisoAtual = aviso;
+
+            if (aviso != null) DiagnosticLog.Warn("Live", "Aviso ao host: " + aviso);
+            OnHostHealthChanged?.Invoke(aviso);
+        }
+
+        private (int conectados, int total) ContarPeers()
+        {
+            lock (_peerConnections)
+            {
+                int conectados = 0;
+                foreach (var pc in _peerConnections.Values)
+                {
+                    if (pc.connectionState == RTCPeerConnectionState.connected) conectados++;
+                }
+                return (conectados, _peerConnections.Count);
+            }
         }
 
         public async Task InitializeClient()
@@ -604,6 +732,11 @@ namespace StreamLiveApp
 
             pc.onconnectionstatechange += (state) =>
             {
+                // O estado do peer só existia como texto efêmero na sobreposição de
+                // estatísticas, que vem desligada. É esta linha que distingue "o ICE nunca
+                // fechou" (firewall bloqueando UDP) de "fechou e mesmo assim não vem imagem".
+                DiagnosticLog.Info(_isHost ? "WebRTC/host" : "WebRTC/viewer", $"peer {clientId}: {state}");
+
                 OnConnectionStateChanged?.Invoke(state.ToString());
                 OnPeerStateChanged?.Invoke(state);
                 if (state == RTCPeerConnectionState.connected && _isHost)

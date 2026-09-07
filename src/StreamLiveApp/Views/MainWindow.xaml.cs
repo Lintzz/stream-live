@@ -208,6 +208,9 @@ namespace StreamLiveApp
 
             _hostBroadcast.BinaryAudioReady += (data) => _server?.BroadcastBinary(data);
 
+            _hostBroadcast.HealthChanged += (aviso) =>
+                System.Windows.Application.Current.Dispatcher.InvokeAsync(() => ShowBroadcastHealthWarning(aviso));
+
             _hostBroadcast.FrameReady += (pixels, width, height) =>
             {
                 UpdateHostBitmap(pixels, width, height);
@@ -250,6 +253,28 @@ namespace StreamLiveApp
             if (ChkFriendsOnly == null) return;
             if (_server != null) _server.RestrictToAllowedIps = ChkFriendsOnly.IsChecked == true;
             PersistSettings();
+        }
+
+        /// <summary>
+        /// Mostra (ou apaga, com <c>null</c>) o aviso de que a live está no ar sem chegar em
+        /// ninguém. Antes o host não tinha como saber: ele vê o próprio preview, que é montado
+        /// antes do encoder e da rede, e a sobreposição de fps conta quadros codificados —
+        /// não entregues.
+        /// </summary>
+        private void ShowBroadcastHealthWarning(string? aviso)
+        {
+            if (BroadcastHealthWarning == null) return;
+
+            if (string.IsNullOrEmpty(aviso))
+            {
+                BroadcastHealthWarning.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            BroadcastHealthWarningText.Text = aviso;
+            BroadcastHealthWarning.ToolTip = aviso + "\n\nSe isso continuar, gere um relatório " +
+                "de diagnóstico em Configurações > Info.";
+            BroadcastHealthWarning.Visibility = Visibility.Visible;
         }
 
         /// <summary>Aviso curto na barra de status, sem roubar o foco com um MessageBox.</summary>
@@ -534,6 +559,7 @@ namespace StreamLiveApp
             LiveBadge.Visibility = Visibility.Collapsed;
             PrivateBadge.Visibility = Visibility.Collapsed;
             ScreenOverlapWarning.Visibility = Visibility.Collapsed;
+            ShowBroadcastHealthWarning(null);
 
             // Devolve o som só das lives que o próprio app silenciou.
             ApplyBroadcastMuteToSessions(false);
@@ -1267,6 +1293,105 @@ namespace StreamLiveApp
                 });
             }
             catch { }
+        }
+
+        /// <summary>
+        /// Junta os registros do app num .zip na Área de Trabalho e abre o Explorer com ele
+        /// selecionado.
+        ///
+        /// O passo do Explorer não é enfeite: sem ele, o caminho dos logs só aparecia no
+        /// MessageBox de erro inesperado, e pedir a um amigo que navegue até %LOCALAPPDATA%
+        /// não é um pedido razoável. Com o arquivo já selecionado, basta arrastar no Discord.
+        /// </summary>
+        private void BtnDiagnosticReport_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // O cabeçalho vai atualizado, com o estado de agora: o log pode ter começado
+                // dias atrás, e o que interessa é a live que acabou de dar problema.
+                DiagnosticLog.Session(DescreverEstadoAtual());
+
+                var destino = System.IO.Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+                    $"StreamLive-diagnostico-{DateTime.Now:yyyyMMdd-HHmm}.zip");
+
+                if (System.IO.File.Exists(destino)) System.IO.File.Delete(destino);
+
+                int incluidos = 0;
+                using (var zip = System.IO.Compression.ZipFile.Open(
+                    destino, System.IO.Compression.ZipArchiveMode.Create))
+                {
+                    // A lista de arquivos é fechada de propósito (ver DiagnosticLog.ReportFiles):
+                    // friends.json e settings.json moram na mesma pasta e levam os IPs dos
+                    // amigos e a senha da sala.
+                    foreach (var nome in DiagnosticLog.ReportFiles)
+                    {
+                        if (CopiarParaZip(zip, nome)) incluidos++;
+                    }
+                }
+
+                if (incluidos == 0)
+                {
+                    System.Windows.MessageBox.Show(
+                        "Ainda não há nada registrado para enviar. Faça uma transmissão, reproduza o " +
+                        "problema e gere o relatório de novo.",
+                        "Relatório de diagnóstico", MessageBoxButton.OK, MessageBoxImage.Information);
+                    System.IO.File.Delete(destino);
+                    return;
+                }
+
+                try { Process.Start("explorer.exe", $"/select,\"{destino}\""); } catch { }
+
+                System.Windows.MessageBox.Show(
+                    "Relatório salvo na sua Área de Trabalho:\n\n" +
+                    System.IO.Path.GetFileName(destino) +
+                    "\n\nMande esse arquivo para quem cuida do app.",
+                    "Relatório de diagnóstico", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                DiagnosticLog.Error("Diagnostico", "Falha ao gerar o relatorio", ex);
+                System.Windows.MessageBox.Show(
+                    "Não foi possível gerar o relatório:\n\n" + ex.Message,
+                    "Relatório de diagnóstico", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        /// <summary>
+        /// Copia um log para dentro do zip lendo com <c>FileShare.ReadWrite</c>: o app continua
+        /// escrevendo nesses arquivos enquanto o relatório é gerado, e o
+        /// <c>CreateEntryFromFile</c> falharia no meio se alguém escrevesse na hora errada.
+        /// </summary>
+        private static bool CopiarParaZip(System.IO.Compression.ZipArchive zip, string nome)
+        {
+            var origem = AppPaths.GetFilePath(nome);
+
+            try
+            {
+                if (!System.IO.File.Exists(origem)) return false;
+
+                using var leitura = new System.IO.FileStream(origem, System.IO.FileMode.Open,
+                    System.IO.FileAccess.Read, System.IO.FileShare.ReadWrite | System.IO.FileShare.Delete);
+                using var entrada = zip.CreateEntry(nome).Open();
+                leitura.CopyTo(entrada);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                DiagnosticLog.Error("Diagnostico", $"Nao foi possivel incluir '{nome}' no relatorio", ex);
+                return false;
+            }
+        }
+
+        /// <summary>Estado do app no instante em que o relatório é gerado.</summary>
+        private string DescreverEstadoAtual()
+        {
+            var noAr = _hostBroadcast?.IsBroadcasting == true;
+            return $"evento=relatorio | transmitindo={(noAr ? "sim" : "nao")}" +
+                   $" | viewers={_server?.ConnectedClientsCount ?? 0}" +
+                   $" | lives abertas={_sessions.Count}" +
+                   $" | captura={_hostBroadcast?.ActiveCaptureMode ?? "—"}" +
+                   $" | pidExcluido={ResolveExcludedAudioPid()}";
         }
 
         [DllImport("kernel32.dll")]

@@ -43,6 +43,13 @@ namespace StreamLiveApp
 
         public event Action<string>? AudioCaptureError;
 
+        /// <summary>
+        /// A live está no ar mas não está entregando (texto do aviso), ou <c>null</c> quando
+        /// volta ao normal. O host não tinha como perceber isso sozinho: o preview local vem
+        /// de antes do encoder e da rede.
+        /// </summary>
+        public event Action<string?>? HealthChanged;
+
         /// <summary>Áudio PCM capturado, para difusão pelo WebSocket.</summary>
         public event Action<byte[]>? BinaryAudioReady;
 
@@ -76,6 +83,7 @@ namespace StreamLiveApp
             manager.OnLocalVideoFrameReady += (pixels, width, height, stride) => FrameReady?.Invoke(pixels, width, height);
             manager.OnHostStatsUpdated += (fps, kbps) => StatsUpdated?.Invoke(fps, kbps);
             manager.OnAudioStatsUpdated += (frames) => AudioStatsUpdated?.Invoke(frames);
+            manager.OnHostHealthChanged += (aviso) => HealthChanged?.Invoke(aviso);
             manager.OnBinaryDataReady += (data) => BinaryAudioReady?.Invoke(data);
             manager.HasAudioListeners = () => _server?.HasBroadcastTargets == true;
 

@@ -336,6 +336,17 @@
                     </StackPanel>
                     </Border>
 
+                <!-- A live está no ar mas não chega em ninguém. Fica aqui, e não no StatusText
+                     do preview, porque aquele texto é escondido a cada quadro local recebido —
+                     e o quadro local continua chegando justamente nos casos em que nada sai. -->
+                <Border x:Name="BroadcastHealthWarning" Background="#33E53935" BorderBrush="#E53935" BorderThickness="1"
+                        CornerRadius="4" Padding="7,3" VerticalAlignment="Center" Visibility="Collapsed" Margin="10,0,0,0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" Foreground="#E53935" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBlock x:Name="BroadcastHealthWarningText" Text="" Foreground="#FF8A80" FontSize="11" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
             </WrapPanel>
         </Border>
 
@@ -685,6 +696,14 @@
                                     <TextBlock Foreground="#0094F2" FontSize="14" HorizontalAlignment="Center" Cursor="Hand" TextDecorations="Underline" MouseLeftButtonDown="GithubLink_Click">
                                         GitHub Repository
                                     </TextBlock>
+
+                                    <Button x:Name="BtnDiagnosticReport" Content="Gerar relatório de diagnóstico"
+                                            Style="{StaticResource ModernButton}" Background="#1E1E24"
+                                            HorizontalAlignment="Center" Margin="0,25,0,0" Padding="14,6"
+                                            Click="BtnDiagnosticReport_Click"/>
+                                    <TextBlock Foreground="#8A8A94" FontSize="11" Margin="0,8,0,0" MaxWidth="330"
+                                               TextAlignment="Center" TextWrapping="Wrap"
+                                               Text="Salva um arquivo .zip na Área de Trabalho com os registros do app. Mande esse arquivo se algo não estiver funcionando — som ou imagem que não chegam nos seus amigos, por exemplo."/>
                                 </StackPanel>
                             </Grid>
                         </TabItem>

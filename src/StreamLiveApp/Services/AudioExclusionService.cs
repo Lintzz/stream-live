@@ -24,10 +24,23 @@ namespace StreamLiveApp.Services
                 var processes = Process.GetProcessesByName(processName);
                 var withWindow = processes.FirstOrDefault(p => p.MainWindowHandle != IntPtr.Zero);
                 var target = withWindow ?? processes.FirstOrDefault();
-                return target == null ? 0u : (uint)target.Id;
+
+                if (target == null)
+                {
+                    // Não é erro — mas muda o comportamento do áudio por inteiro, e antes
+                    // acontecia sem uma palavra em lugar nenhum.
+                    DiagnosticLog.Warn("Audio",
+                        $"'{processName}' nao esta aberto: nada sera excluido e a captura vai " +
+                        "pegar o loopback do sistema inteiro.");
+                    return 0u;
+                }
+
+                DiagnosticLog.Info("Audio", $"'{processName}' resolvido para o PID {target.Id} (ficara fora da captura).");
+                return (uint)target.Id;
             }
-            catch
+            catch (Exception ex)
             {
+                DiagnosticLog.Error("Audio", $"Falha ao procurar o processo '{processName}'; capturando o sistema inteiro", ex);
                 return 0;
             }
         }

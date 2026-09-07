@@ -336,11 +336,11 @@ namespace StreamLiveApp
                         // cada 5s — avisar transformaria a barra de status num piscar contínuo.
                         if (IsHiddenByPrivateLive(rawIp))
                         {
-                            Debug.WriteLine($"[Server] Conexão recusada (live privada): {normalized}");
+                            DiagnosticLog.Info("Sinalizacao", $"Conexao recusada (live privada): {normalized}");
                         }
                         else
                         {
-                            Debug.WriteLine($"[Server] Conexão recusada (fora da lista de amigos): {normalized}");
+                            DiagnosticLog.Warn("Sinalizacao", $"Conexao recusada (fora da lista de amigos): {normalized}");
                             OnConnectionRejected?.Invoke(normalized);
                         }
 
@@ -348,7 +348,7 @@ namespace StreamLiveApp
                         return;
                     }
 
-                    Debug.WriteLine($"[Server] Client connected: {rawIp}");
+                    DiagnosticLog.Info("Sinalizacao", $"Conexao aceita: {NormalizeIp(rawIp)}");
                     GetLink(socket);
                     lock (_clientsLock)
                     {
@@ -358,7 +358,7 @@ namespace StreamLiveApp
 
                 socket.OnClose = () =>
                 {
-                    Debug.WriteLine($"[Server] Client disconnected: {socket.ConnectionInfo.ClientIpAddress}");
+                    DiagnosticLog.Info("Sinalizacao", $"Conexao encerrada: {NormalizeIp(socket.ConnectionInfo.ClientIpAddress)}");
                     lock (_clientsLock)
                     {
                         _clients.Remove(socket);
@@ -446,7 +446,7 @@ namespace StreamLiveApp
                 _ => { try { SweepSilentViewers(); } catch { } },
                 null, HeartbeatSweepInterval, HeartbeatSweepInterval);
 
-            Debug.WriteLine($"[Server] Started on ws://{ipAddress}:{port}");
+            DiagnosticLog.Info("Sinalizacao", $"Servidor no ar em ws://{ipAddress}:{port}");
         }
 
         /// <summary>
@@ -496,12 +496,15 @@ namespace StreamLiveApp
                     _authenticatedClients.Add(socket.ConnectionInfo.Id);
                     _challenges.Remove(socket.ConnectionInfo.Id);
                 }
+                DiagnosticLog.Info("Sinalizacao", $"Senha aceita: {NormalizeIp(socket.ConnectionInfo.ClientIpAddress)}");
                 SafeSend(socket, SignalingMessage.Serialize(new SignalingMessage { Type = "AUTH_OK" }));
             }
             else
             {
                 // Desafio queima a cada tentativa (impede replay do mesmo HMAC), e o novo vai
                 // junto do AUTH_FAIL — senão o viewer ficaria sem desafio para tentar de novo.
+                DiagnosticLog.Warn("Sinalizacao", $"Senha incorreta: {NormalizeIp(socket.ConnectionInfo.ClientIpAddress)}");
+
                 var next = CryptoHelper.NewChallenge();
                 lock (_clientsLock) { _challenges[socket.ConnectionInfo.Id] = next; }
                 SafeSend(socket, SignalingMessage.Serialize(new SignalingMessage { Type = "AUTH_FAIL", Data = next }));
@@ -680,7 +683,9 @@ namespace StreamLiveApp
             var link = GetLink(client);
             if (Interlocked.Exchange(ref link.FailureLogged, 1) != 0) return;
 
-            WriteLog($"Falha ao enviar para {NormalizeIp(client.ConnectionInfo.ClientIpAddress)}: {ex.GetBaseException().Message}");
+            var motivo = $"Falha ao enviar para {NormalizeIp(client.ConnectionInfo.ClientIpAddress)}: {ex.GetBaseException().Message}";
+            WriteLog(motivo);
+            DiagnosticLog.Warn("Sinalizacao", motivo);
         }
 
         private static void WriteLog(string content)
@@ -713,7 +718,8 @@ namespace StreamLiveApp
                 var silence = now - new DateTime(Interlocked.Read(ref link.LastSeenTicks), DateTimeKind.Utc);
                 if (silence <= ViewerSilenceTimeout) continue;
 
-                Debug.WriteLine($"[Server] Viewer {client.ConnectionInfo.ClientIpAddress} calado há {silence.TotalSeconds:F0}s; fechando.");
+                DiagnosticLog.Warn("Sinalizacao",
+                    $"Viewer {NormalizeIp(client.ConnectionInfo.ClientIpAddress)} calado ha {silence.TotalSeconds:F0}s; fechando.");
                 try { client.Close(); } catch { }
             }
         }

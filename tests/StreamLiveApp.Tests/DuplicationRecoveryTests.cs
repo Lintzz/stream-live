@@ -83,4 +83,33 @@ public class DuplicationRecoveryTests
         Assert.NotEqual(Action.FallBackToGdi,
             VideoCapturer.DecideDuplicationAction(DuplicationFrame.Lost, 60, hasRealFrame: false));
     }
+
+    /// <summary>
+    /// O outro lado do mesmo buraco: recriar sempre, sem limite.
+    ///
+    /// Enquanto um jogo segura a tela cheia exclusiva, a duplicação recém-criada morre no
+    /// primeiro quadro e o ciclo perder→recriar→perder roda para sempre. Como recriar zerava o
+    /// contador de timeouts, a desistência para o GDI nunca chegava: a live ficava sem emitir
+    /// um quadro sequer, por tempo indeterminado.
+    /// </summary>
+    [Fact]
+    public void RepeatedRecreationsEventuallyFallBackToGdi()
+    {
+        Assert.Equal(Action.FallBackToGdi,
+            VideoCapturer.DecideDuplicationAction(DuplicationFrame.Lost, 0, hasRealFrame: true,
+                consecutiveRecreates: 5));
+    }
+
+    [Fact]
+    public void TheFirstRecreationsStillTryAgain()
+    {
+        // Uma perda isolada (troca de modo de vídeo, UAC) se resolve recriando. Desistir na
+        // primeira jogaria fora o caminho rápido pelo resto da transmissão.
+        Assert.Equal(Action.Recreate,
+            VideoCapturer.DecideDuplicationAction(DuplicationFrame.Lost, 0, hasRealFrame: true,
+                consecutiveRecreates: 1));
+        Assert.Equal(Action.Recreate,
+            VideoCapturer.DecideDuplicationAction(DuplicationFrame.Lost, 0, hasRealFrame: true,
+                consecutiveRecreates: 4));
+    }
 }

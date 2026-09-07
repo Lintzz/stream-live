@@ -124,9 +124,11 @@ namespace StreamLiveApp
                     adapter.Dispose();
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Sem duplicação disponível: quem chama usa o GDI.
+                // Sem duplicação disponível: quem chama usa o GDI. O motivo ia embora com o
+                // catch vazio, e "a captura ficou pesada" chegava sem explicação nenhuma.
+                DiagnosticLog.Error("Video", "Falha ao criar a duplicacao DXGI; o GDI assume", ex);
             }
             finally
             {
@@ -134,6 +136,39 @@ namespace StreamLiveApp
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Descreve os adaptadores de vídeo para o cabeçalho de sessão do diagnóstico.
+        ///
+        /// O <see cref="TryCreate"/> já enumerava os <c>IDXGIAdapter1</c> e jogava a descrição
+        /// fora. Ela importa: GPU híbrida e driver antigo são duas das causas de a duplicação
+        /// não funcionar, e sem isto não dá para diferenciá-las à distância.
+        /// </summary>
+        public static string DescribeAdapters()
+        {
+            IDXGIFactory1? factory = null;
+            try
+            {
+                factory = DXGI.CreateDXGIFactory1<IDXGIFactory1>();
+
+                var nomes = new System.Collections.Generic.List<string>();
+                for (uint i = 0; factory.EnumAdapters1(i, out var adapter).Success; i++)
+                {
+                    try { nomes.Add(adapter.Description1.Description); }
+                    finally { adapter.Dispose(); }
+                }
+
+                return nomes.Count == 0 ? "nenhum" : string.Join(" + ", nomes);
+            }
+            catch (Exception ex)
+            {
+                return "?: " + ex.Message;
+            }
+            finally
+            {
+                factory?.Dispose();
+            }
         }
 
         /// <summary>

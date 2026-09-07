@@ -84,6 +84,7 @@ namespace StreamLiveApp
 
                 _isCapturing = true;
                 bool refused = false;
+                var relogio = System.Diagnostics.Stopwatch.StartNew();
 
                 _captureThread = new Thread(() =>
                 {
@@ -94,7 +95,10 @@ namespace StreamLiveApp
                         StartCaptureAsync(processId, includeProcessTree,
                             AudioCapturer.Channels, AudioCapturer.SampleRate, 16);
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        DiagnosticLog.Error("Audio", "A DLL nativa recusou a captura por processo", ex);
+                    }
 
                     // Chegar aqui só acontece quando o Windows recusa: no caminho bom a chamada
                     // acima não volta nunca.
@@ -102,6 +106,25 @@ namespace StreamLiveApp
                     if (_isCapturing)
                     {
                         _isCapturing = false;
+
+                        var decorrido = relogio.Elapsed;
+                        if (decorrido > StartupGracePeriod)
+                        {
+                            // Recusa depois da janela de tolerância: o StartCapture já devolveu
+                            // true e quem chamou não vai mais cair para o loopback. A live segue
+                            // muda, e só esta linha explica por quê.
+                            DiagnosticLog.Error("Audio",
+                                $"Captura do PID {processId} recusada apos {decorrido.TotalMilliseconds:F0}ms, " +
+                                $"fora da janela de {StartupGracePeriod.TotalMilliseconds:F0}ms: " +
+                                "o fallback para o loopback nao acontece e a transmissao fica sem som.");
+                        }
+                        else
+                        {
+                            DiagnosticLog.Warn("Audio",
+                                $"Captura do PID {processId} recusada em {decorrido.TotalMilliseconds:F0}ms; " +
+                                "quem chamou cai para o loopback.");
+                        }
+
                         OnCaptureError?.Invoke(StartFailureMessage);
                     }
                 })
@@ -179,9 +202,13 @@ namespace StreamLiveApp
                 Marshal.Copy(data, buffer, 0, length);
                 OnAudioFrameReady?.Invoke(buffer);
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore errors in callback to prevent crashes in native code
+                // A exceção continua sem subir — deixá-la voltar para o código nativo derruba
+                // o processo. Mas some do diagnóstico só a partir da segunda: aqui é o callback
+                // do áudio, chamado dezenas de vezes por segundo.
+                DiagnosticLog.Once("Audio", "callback-processo",
+                    "Falha ao entregar quadro vindo da ApplicationLoopback.dll: " + ex);
             }
         }
 

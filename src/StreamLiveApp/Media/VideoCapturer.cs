@@ -61,6 +61,18 @@ namespace StreamLiveApp
         private const int DuplicationFailureLimit = 60;
         private int _duplicationFailures;
 
+        // Recriar não é de graça (cria um device D3D inteiro) e nem sempre resolve: enquanto o
+        // jogo segura a tela cheia exclusiva, a duplicação nova morre no primeiro quadro e o
+        // ciclo perder→recriar→perder se repete para sempre, sem emitir nada. O limite é bem
+        // menor que o de timeouts porque cada volta custa muito mais.
+        private const int DuplicationRecreateLimit = 5;
+        private int _duplicationRecreates;
+
+        // Erros na thread de captura chegam em rajada (o timer dispara a 60 Hz): sem contar e
+        // logar só de vez em quando, um único problema encheria o arquivo em segundos.
+        private const int CaptureErrorLogInterval = 600;
+        private int _captureErrors;
+
         // O DXGI só entrega quadro quando a imagem muda, então com a tela parada o
         // capturador reemite o último. Este é o piso do ritmo dessa reemissão — e, na
         // prática, o piso de fps da transmissão inteira.
@@ -240,9 +252,17 @@ namespace StreamLiveApp
                     CaptureFrameCore();
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Ignore capture errors (window closed, minimized)
+                // Erro de captura é esperado em alguns momentos (janela fechando, troca de
+                // modo de vídeo) e a captura se recupera sozinha — por isso não interrompe
+                // nada. Mas quando ele passa a acontecer em TODO quadro, a live fica sem
+                // imagem e antes disso não deixava rastro nenhum.
+                var total = ++_captureErrors;
+                if (total == 1 || total % CaptureErrorLogInterval == 0)
+                {
+                    DiagnosticLog.Error("Video", $"Falha ao capturar quadro (ocorrencia {total})", ex);
+                }
             }
             finally
             {
@@ -404,9 +424,9 @@ namespace StreamLiveApp
             // dimensões trocadas produziria imagem deslocada (e antes estourava o buffer).
             if (_duplication.Width != _bufferWidth || _duplication.Height != _bufferHeight)
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"[Capture] Duplicação {_duplication.Width}x{_duplication.Height} != esperado " +
-                    $"{_bufferWidth}x{_bufferHeight}; usando GDI.");
+                DiagnosticLog.Warn("Video",
+                    $"Duplicacao {_duplication.Width}x{_duplication.Height} != esperado " +
+                    $"{_bufferWidth}x{_bufferHeight} (escala de DPI); usando GDI de vez.");
                 _duplication.Dispose();
                 _duplication = null;
                 _duplicationUnavailable = true;
@@ -415,22 +435,26 @@ namespace StreamLiveApp
 
             var frame = _duplication.TryGetFrame(_captureBuffer!, _bufferWidth * 4, _bufferHeight);
             int timeouts = frame == DuplicationFrame.Timeout ? _duplicationFailures + 1 : 0;
+            int recreates = frame == DuplicationFrame.Lost ? _duplicationRecreates + 1 : 0;
 
-            switch (DecideDuplicationAction(frame, timeouts, _hasRealFrame))
+            switch (DecideDuplicationAction(frame, timeouts, _hasRealFrame, recreates))
             {
                 case DuplicationAction.Use:
                     _duplicationFailures = 0;
+                    _duplicationRecreates = 0;
                     return true;
 
                 case DuplicationAction.Recreate:
-                    System.Diagnostics.Debug.WriteLine("[Capture] Duplicação perdida; recriando.");
+                    DiagnosticLog.Warn("Video", $"Duplicacao perdida; recriando (tentativa {recreates}).");
                     _duplication.Dispose();
                     _duplication = null;
                     _duplicationFailures = 0;
+                    _duplicationRecreates = recreates;
                     return false;
 
                 case DuplicationAction.FallBackToGdi:
-                    System.Diagnostics.Debug.WriteLine("[Capture] Duplicação sem quadros; voltando para GDI.");
+                    DiagnosticLog.Warn("Video",
+                        $"Duplicacao sem quadros (timeouts={timeouts}, recriacoes={recreates}); voltando para GDI.");
                     _duplication.Dispose();
                     _duplication = null;
                     _duplicationUnavailable = true;
@@ -463,14 +487,25 @@ namespace StreamLiveApp
         /// que a transmissão congelava: perda e timeout chegavam como o mesmo <c>false</c>, e
         /// a recuperação estava presa a <c>!hasRealFrame</c> — depois do primeiro quadro, uma
         /// duplicação perdida nunca mais era recriada e a live ficava travada no último quadro.
+        ///
+        /// <paramref name="consecutiveRecreates"/> fecha o outro lado do mesmo buraco: recriar
+        /// sempre, sem limite, faz o ciclo perder→recriar→perder rodar para sempre sem emitir
+        /// um quadro sequer — e como recriar zerava o contador de timeouts, a desistência para
+        /// o GDI nunca chegava. Era live nenhuma, indefinidamente e sem log.
         /// </summary>
         internal static DuplicationAction DecideDuplicationAction(
-            DuplicationFrame frame, int consecutiveTimeouts, bool hasRealFrame)
+            DuplicationFrame frame, int consecutiveTimeouts, bool hasRealFrame, int consecutiveRecreates = 0)
         {
             if (frame == DuplicationFrame.Frame) return DuplicationAction.Use;
 
-            // Perda é sempre recuperável recriando, tenha ou não vindo quadro antes.
-            if (frame == DuplicationFrame.Lost) return DuplicationAction.Recreate;
+            // Perda é recuperável recriando, tenha ou não vindo quadro antes — mas só até o
+            // ponto em que fica claro que recriar não está adiantando.
+            if (frame == DuplicationFrame.Lost)
+            {
+                return consecutiveRecreates >= DuplicationRecreateLimit
+                    ? DuplicationAction.FallBackToGdi
+                    : DuplicationAction.Recreate;
+            }
 
             // Timeout: normal com a tela parada. Só vira desistência se NUNCA veio quadro —
             // aí a duplicação existe mas não funciona nesta máquina.
