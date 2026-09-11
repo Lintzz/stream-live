@@ -185,7 +185,13 @@ namespace StreamLiveApp
 
             try
             {
-                SIPSorceryMedia.FFmpeg.FFmpegInit.Initialise();
+                // O libPath é obrigatório aqui. Sem ele o RegisterFFmpegBinaries procura o
+                // layout "FFmpeg\bin\x64", que este projeto não usa — as DLLs são achatadas na
+                // raiz da saída pelo <Link> do csproj —, e lançava "Unable to find FFMPEG
+                // binaries" em toda sessão de toda máquina. O vídeo funcionava mesmo assim
+                // (o FFmpegVideoEncoder resolve pelo loader do Windows, ao lado do exe), então
+                // o que esse erro produzia era só caça ao antivírus num problema inexistente.
+                SIPSorceryMedia.FFmpeg.FFmpegInit.Initialise(libPath: baseDir);
                 DiagnosticLog.Info("Video", "FFmpeg inicializado.");
             }
             catch (Exception ex)
@@ -587,7 +593,13 @@ namespace StreamLiveApp
             string? aviso = null;
             if (total > 0 && conectados == 0)
             {
-                aviso = "Ninguém está recebendo sua imagem — verifique o firewall do Windows.";
+                // Dizia "verifique o firewall do Windows". Era um palpite exibido como
+                // diagnóstico, e mandou gente caçar regra de firewall enquanto a causa real
+                // estava nos candidatos ICE. Agora o aviso relata o que aconteceu — o log
+                // (categoria WebRTC/*) é que carrega os endereços tentados.
+                aviso = total == 1
+                    ? "A conexão de vídeo com quem está assistindo não fechou — só o áudio está indo."
+                    : $"A conexão de vídeo não fechou com nenhum dos {total} espectadores — só o áudio está indo.";
             }
             else if (fps == 0)
             {
@@ -670,13 +682,138 @@ namespace StreamLiveApp
             OnLocalSdpReady?.Invoke("host", SignalingMessage.Serialize(request));
         }
 
+        private string IceCategory => _isHost ? "WebRTC/host" : "WebRTC/viewer";
+
+        /// <summary>
+        /// Candidatos ICE reunidos por peer, guardados até o desfecho da conexão.
+        ///
+        /// Existe porque o log registrava o estado do peer e mais nada: dava para ver que o ICE
+        /// falhou, nunca <em>com que endereços</em> ele tentou. Um caso de "o som vai e a imagem
+        /// não" levou dois dias de caça ao firewall porque nenhum dos dois lados sabia dizer se
+        /// o IP da VPN tinha sequer entrado na lista de candidatos.
+        /// </summary>
+        private sealed class PeerIceLog
+        {
+            // Um cadeado só para os dois lados: quem escreve são as tarefas de coleta do
+            // SIPSorcery e a thread que processa a sinalização, ao mesmo tempo.
+            private readonly object _gate = new object();
+            private readonly List<string> _local = new List<string>();
+            private readonly List<string> _remote = new List<string>();
+            private bool _flushed;
+
+            public void AddLocal(string descricao)
+            {
+                lock (_gate) { if (!_local.Contains(descricao)) _local.Add(descricao); }
+            }
+
+            public void AddRemote(string descricao)
+            {
+                lock (_gate) { if (!_remote.Contains(descricao)) _remote.Add(descricao); }
+            }
+
+            /// <summary>
+            /// Despeja as duas listas numa linha só, uma única vez por peer. O laço de
+            /// recuperação do viewer refaz a conexão a cada 18 s; uma linha por evento encheria
+            /// o arquivo com a mesma informação.
+            /// </summary>
+            public void Flush(string categoria, string clientId)
+            {
+                string locais, remotos;
+                lock (_gate)
+                {
+                    if (_flushed) return;
+                    _flushed = true;
+
+                    locais = _local.Count > 0 ? string.Join(", ", _local) : "nenhum";
+                    remotos = _remote.Count > 0 ? string.Join(", ", _remote) : "nenhum";
+                }
+
+                DiagnosticLog.Info(categoria, $"peer {clientId}: candidatos locais=[{locais}] remotos=[{remotos}]");
+            }
+        }
+
+        private readonly Dictionary<string, PeerIceLog> _iceLogs = new Dictionary<string, PeerIceLog>();
+
+        private PeerIceLog TrackIce(string clientId)
+        {
+            lock (_peerConnections)
+            {
+                var log = new PeerIceLog();
+                _iceLogs[clientId] = log;
+                return log;
+            }
+        }
+
+        private PeerIceLog? PeekIce(string clientId)
+        {
+            lock (_peerConnections)
+            {
+                return _iceLogs.TryGetValue(clientId, out var log) ? log : null;
+            }
+        }
+
+        private static string DescribeCandidate(RTCIceCandidate? candidate)
+        {
+            if (candidate == null) return "?";
+            return $"{candidate.type} {candidate.protocol} {FormatEndpoint(candidate.address, candidate.port.ToString())}";
+        }
+
+        /// <summary>
+        /// Endereço e porta num só token. O colchete no IPv6 não é enfeite: com todas as
+        /// interfaces no ICE saem candidatos como <c>2804:1b3:a9c1:148d:e1c9:35fb:f03a:babd</c>,
+        /// e sem ele a linha do log terminava em <c>:babd:57802</c> — impossível dizer onde
+        /// acaba o endereço e começa a porta, que é exatamente o que se vai ler ali.
+        /// </summary>
+        private static string FormatEndpoint(string? address, string port)
+            => address != null && address.Contains(':') ? $"[{address}]:{port}" : $"{address}:{port}";
+
+        private static string DescribeCandidate(RTCIceCandidateInit? candidate)
+            => DescribeCandidateAttribute(candidate?.candidate);
+
+        /// <summary>
+        /// Reduz o atributo SDP de um candidato ao que interessa no log — tipo, transporte,
+        /// endereço e porta. O que chega do outro lado é a linha crua
+        /// <c>candidate:&lt;foundation&gt; &lt;componente&gt; &lt;transporte&gt; &lt;prioridade&gt; &lt;ip&gt; &lt;porta&gt; typ &lt;tipo&gt; ...</c>,
+        /// e é o <b>endereço</b> dela que diz se o amigo anunciou o IP da VPN ou só o da LAN
+        /// dele — a diferença entre uma live que fecha e uma que morre em 16 s.
+        /// </summary>
+        internal static string DescribeCandidateAttribute(string? sdpAttribute)
+        {
+            if (string.IsNullOrWhiteSpace(sdpAttribute)) return "?";
+
+            var campos = sdpAttribute.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (campos.Length < 6) return sdpAttribute.Trim();
+
+            var transporte = campos[2];
+            var endereco = campos[4];
+            var porta = campos[5];
+
+            var tipo = "?";
+            for (int i = 6; i + 1 < campos.Length; i++)
+            {
+                if (campos[i] == "typ") { tipo = campos[i + 1]; break; }
+            }
+
+            return $"{tipo} {transporte} {FormatEndpoint(endereco, porta)}";
+        }
+
         /// <summary>
         /// Cria a conexão WebRTC do peer. Era <c>async void</c>: exceções em createOffer se
         /// perdiam no TaskScheduler e o chamador não tinha como esperar o offer sair.
         /// </summary>
         public async Task CreatePeerConnection(string clientId)
         {
-            var pc = new RTCPeerConnection(null);
+            // Sem configuração o SIPSorcery gera candidatos ICE só com os endereços da placa
+            // que o Windows usa para sair à internet — a Ethernet/Wi-Fi de casa. O 26.x da
+            // Radmin, que é o ÚNICO endereço em que dois amigos se alcançam, ficava de fora, e
+            // o ICE só fechava quando o outro lado, por sorte, anunciava o dele: a live
+            // funcionava com uns amigos e nunca com outros, sempre morrendo nos 16s do
+            // FAILED_TIMEOUT_PERIOD. Incluir todas as interfaces é seguro aqui — os endereços
+            // locais "vazam" para amigos autenticados dentro da própria VPN.
+            var pc = new RTCPeerConnection(new RTCConfiguration
+            {
+                X_ICEIncludeAllInterfaceAddresses = true
+            });
 
             // Both host and client need to know they support H264
             var videoFormat = new SDPAudioVideoMediaFormat(new VideoFormat(VideoCodecsEnum.H264, 96));
@@ -723,19 +860,41 @@ namespace StreamLiveApp
 
             }
 
+            var iceLog = TrackIce(clientId);
+
             pc.onicecandidate += (candidate) =>
             {
                 if (candidate == null) return;
+                iceLog.AddLocal(DescribeCandidate(candidate));
                 var msg = new SignalingMessage { Type = "ice", Data = candidate.toJSON(), SenderId = clientId };
                 OnLocalSdpReady?.Invoke(clientId, SignalingMessage.Serialize(msg));
             };
+
+            // O ICE tem estado próprio e ele é o que interessa quando nada aparece na tela: o
+            // connectionState só vira failed depois, e junta no mesmo balde "não achei par
+            // nenhum" e "achei, mas o DTLS morreu".
+            pc.oniceconnectionstatechange += (state) =>
+                DiagnosticLog.Info(IceCategory, $"peer {clientId}: ICE {state}");
+
+            pc.onicecandidateerror += (candidate, error) =>
+                DiagnosticLog.Warn(IceCategory,
+                    $"peer {clientId}: falha ao reunir candidato {DescribeCandidate(candidate)}: {error}");
 
             pc.onconnectionstatechange += (state) =>
             {
                 // O estado do peer só existia como texto efêmero na sobreposição de
                 // estatísticas, que vem desligada. É esta linha que distingue "o ICE nunca
-                // fechou" (firewall bloqueando UDP) de "fechou e mesmo assim não vem imagem".
-                DiagnosticLog.Info(_isHost ? "WebRTC/host" : "WebRTC/viewer", $"peer {clientId}: {state}");
+                // fechou" de "fechou e mesmo assim não vem imagem" — e, junto com a linha de
+                // candidatos abaixo, com que endereços ele tentou.
+                DiagnosticLog.Info(IceCategory, $"peer {clientId}: {state}");
+
+                // O desfecho é o momento certo para despejar os candidatos: aqui os dois lados
+                // já trocaram tudo que tinham. Antes disso a lista sai pela metade, e a cada
+                // evento sairia repetida — o laço de recuperação refaz este peer a cada 18s.
+                if (state == RTCPeerConnectionState.connected || state == RTCPeerConnectionState.failed)
+                {
+                    iceLog.Flush(IceCategory, clientId);
+                }
 
                 OnConnectionStateChanged?.Invoke(state.ToString());
                 OnPeerStateChanged?.Invoke(state);
@@ -858,6 +1017,7 @@ namespace StreamLiveApp
                 OnConnectionStateChanged?.Invoke("Received ICE");
                 if (RTCIceCandidateInit.TryParse(msg.Data, out var candidate))
                 {
+                    PeekIce(clientId)?.AddRemote(DescribeCandidate(candidate));
                     pc.addIceCandidate(candidate);
                 }
             }
@@ -872,6 +1032,7 @@ namespace StreamLiveApp
                     try { pc.Close("Client disconnected"); } catch { }
                     _peerConnections.Remove(clientId);
                 }
+                _iceLogs.Remove(clientId);
             }
         }
 
