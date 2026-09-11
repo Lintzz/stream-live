@@ -63,6 +63,7 @@ namespace StreamLiveApp
             public long PendingBytes;
             public long LastSeenTicks = DateTime.UtcNow.Ticks;
             public int FailureLogged; // 0/1 — só a primeira falha de envio vai para o log
+            public bool CloseRequested; // já levou um Close() de SweepSilentViewers
         }
 
         public bool IsStreaming { get; set; } = false;
@@ -599,7 +600,14 @@ namespace StreamLiveApp
             => _links.GetOrAdd(client.ConnectionInfo.Id, static _ => new ViewerLink());
 
         private void MarkSeen(IWebSocketConnection client)
-            => Interlocked.Exchange(ref GetLink(client).LastSeenTicks, DateTime.UtcNow.Ticks);
+        {
+            var link = GetLink(client);
+            Interlocked.Exchange(ref link.LastSeenTicks, DateTime.UtcNow.Ticks);
+
+            // Deu sinal de vida: se um dia ficou calado e levou um Close que não pegou, esquece.
+            // Sem isto, o próximo silêncio dele pularia direto para a remoção à força.
+            link.CloseRequested = false;
+        }
 
         /// <summary>
         /// Avisa a UI, no máximo uma vez por segundo. O descarte é decidido por pacote de áudio
@@ -699,8 +707,32 @@ namespace StreamLiveApp
         }
 
         /// <summary>
+        /// O que fazer com uma conexão calada. Separado da varredura porque o caso que importa —
+        /// o <c>Close()</c> não surtir efeito — só se enxerga entre duas passagens.
+        /// </summary>
+        internal enum SilentViewerAction
+        {
+            Manter,
+            Fechar,
+            Expulsar
+        }
+
+        internal static SilentViewerAction DecideSilentViewerAction(
+            TimeSpan silence, TimeSpan timeout, bool closeAlreadyRequested)
+        {
+            if (silence <= timeout) return SilentViewerAction.Manter;
+            return closeAlreadyRequested ? SilentViewerAction.Expulsar : SilentViewerAction.Fechar;
+        }
+
+        /// <summary>
         /// Fecha conexões que pararam de dar sinal de vida. O viewer manda PING a cada 3s, então
         /// silêncio prolongado só acontece quando ele já não está mais lá.
+        ///
+        /// A segunda passagem existe porque o <c>Close()</c> do Fleck depende do socket ainda
+        /// responder: com o TCP meio-aberto o <c>OnClose</c> nunca dispara, a conexão continua em
+        /// <c>_clients</c> e a mesma varredura a reencontrava a cada 5s — nos logs de campo, cinco
+        /// cópias do mesmo viewer "calado ha 342s" para sempre, inflando a contagem de peers que
+        /// alimenta o aviso de saúde da live. Quem já levou um Close e não saiu, sai na mão.
         /// </summary>
         private void SweepSilentViewers()
         {
@@ -716,12 +748,42 @@ namespace StreamLiveApp
                 if (!_links.TryGetValue(client.ConnectionInfo.Id, out var link)) continue;
 
                 var silence = now - new DateTime(Interlocked.Read(ref link.LastSeenTicks), DateTimeKind.Utc);
-                if (silence <= ViewerSilenceTimeout) continue;
+                var action = DecideSilentViewerAction(silence, ViewerSilenceTimeout, link.CloseRequested);
+                if (action == SilentViewerAction.Manter) continue;
+
+                var ip = NormalizeIp(client.ConnectionInfo.ClientIpAddress);
+
+                if (action == SilentViewerAction.Fechar)
+                {
+                    link.CloseRequested = true;
+                    DiagnosticLog.Warn("Sinalizacao", $"Viewer {ip} calado ha {silence.TotalSeconds:F0}s; fechando.");
+                    try { client.Close(); } catch { }
+                    continue;
+                }
 
                 DiagnosticLog.Warn("Sinalizacao",
-                    $"Viewer {NormalizeIp(client.ConnectionInfo.ClientIpAddress)} calado ha {silence.TotalSeconds:F0}s; fechando.");
-                try { client.Close(); } catch { }
+                    $"Viewer {ip} nao fechou depois do Close; removendo a forca.");
+                ForgetConnection(client);
             }
+        }
+
+        /// <summary>
+        /// Tira uma conexão de todas as estruturas sem esperar o <c>OnClose</c> do Fleck. Precisa
+        /// cobrir exatamente os mesmos conjuntos que o <c>OnClose</c>, senão o zumbi sai da
+        /// contagem mas continua recebendo broadcast.
+        /// </summary>
+        private void ForgetConnection(IWebSocketConnection client)
+        {
+            lock (_clientsLock)
+            {
+                _clients.Remove(client);
+                _authenticatedClients.Remove(client.ConnectionInfo.Id);
+                _viewers.Remove(client.ConnectionInfo.Id);
+                _challenges.Remove(client.ConnectionInfo.Id);
+            }
+            _links.TryRemove(client.ConnectionInfo.Id, out _);
+            try { client.Close(); } catch { }
+            OnClientDisconnected?.Invoke(client);
         }
 
         /// <summary>

@@ -120,6 +120,7 @@ namespace StreamLiveApp
             sb.Append(" | telas=").Append(DescribeScreens());
             sb.Append(" | gpu=").Append(DesktopDuplicationGrabber.DescribeAdapters());
             sb.Append(" | saidaAudio=").Append(DescribeDefaultAudioDevice());
+            sb.Append(" | rede=").Append(DescribeNetwork());
             sb.Append(" | capturaPorProcesso=")
               .Append(ProcessAudioCapturer.IsSupported() ? "suportada" : "NAO suportada");
 
@@ -171,6 +172,61 @@ namespace StreamLiveApp
             {
                 return "NENHUM: " + ex.Message;
             }
+        }
+
+        /// <summary>
+        /// Placas de rede ativas com o IPv4 de cada uma, marcando com <c>*</c> a da rota padrão.
+        ///
+        /// É a informação que faltava para diagnosticar "o som vai e a imagem não": o WebRTC
+        /// escolhe por onde mandar a mídia a partir dessa lista, e sem ela não dava para saber
+        /// se a máquina do outro tinha a Radmin no ar, quantos adaptadores virtuais competiam
+        /// com ela, nem qual delas o Windows considera a saída para a internet — que é
+        /// justamente a única que o SIPSorcery anunciava antes de configurarmos o ICE.
+        /// </summary>
+        private static string DescribeNetwork()
+        {
+            try
+            {
+                var padrao = EnderecoDaRotaPadrao();
+                var parts = new List<string>();
+
+                foreach (var nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (nic.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
+                    if (nic.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
+
+                    foreach (var unicast in nic.GetIPProperties().UnicastAddresses)
+                    {
+                        var ip = unicast.Address;
+                        if (ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork) continue;
+
+                        var marca = ip.Equals(padrao) ? "*" : string.Empty;
+                        parts.Add($"{nic.Name}={ip}{marca}");
+                    }
+                }
+
+                return parts.Count > 0 ? string.Join(" ", parts) : "nenhuma";
+            }
+            catch (Exception ex) { return "?: " + ex.Message; }
+        }
+
+        /// <summary>
+        /// Pergunta ao Windows por qual endereço local ele sairia para a internet. Nenhum pacote
+        /// é enviado: o <c>Connect</c> de UDP só resolve a rota.
+        /// </summary>
+        private static System.Net.IPAddress? EnderecoDaRotaPadrao()
+        {
+            try
+            {
+                using var socket = new System.Net.Sockets.Socket(
+                    System.Net.Sockets.AddressFamily.InterNetwork,
+                    System.Net.Sockets.SocketType.Dgram,
+                    System.Net.Sockets.ProtocolType.Udp);
+
+                socket.Connect(new System.Net.IPEndPoint(System.Net.IPAddress.Parse("8.8.8.8"), 53));
+                return (socket.LocalEndPoint as System.Net.IPEndPoint)?.Address;
+            }
+            catch { return null; }
         }
 
         /// <summary>
