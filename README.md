@@ -13,9 +13,11 @@
 > O que existe hoje de proteção:
 > * **Lista de permissão por IP** (ligada por padrão): só quem está na sua lista de amigos consegue abrir conexão. Pode ser desligada em *Configurações*.
 > * **Senha de sala opcional** com autenticação por desafio-resposta — a senha nunca trafega na rede; o viewer devolve um HMAC do desafio.
-> * **Criptografia AES-GCM** do conteúdo da sala, com chave derivada por PBKDF2 (200k iterações).
+> * **Criptografia AES-GCM** do conteúdo da sala **quando ela tem senha**, com chave derivada por PBKDF2 (200k iterações). **Sem senha, áudio e sinalização trafegam sem criptografia** (PCM cru sobre `ws://`).
 >
 > O que **não** existe: TLS no canal de sinalização, certificados, ou qualquer defesa contra alguém que já tenha acesso privilegiado à sua rede virtual.
+>
+> **Use uma senha longa.** Quem conseguir observar o tráfego da VPN vê o desafio e a resposta do login e pode testar senhas offline; uma senha curta cai rápido. Veja também [Riscos conhecidos](#-riscos-conhecidos).
 
 ---
 
@@ -82,6 +84,7 @@ O instalador final será gerado na raiz do projeto com o nome **`StreamLive_Setu
 ├── build/
 │   ├── setup.iss                 # Script do Inno Setup; caminhos relativos a esta pasta
 │   └── version.iss               # Gerado pelo build a partir de <Version> — não editar
+├── .github/workflows/ci.yml      # CI: restore + build + testes em windows-latest
 ├── src/
 │   └── StreamLiveApp/
 │       ├── StreamLiveApp.csproj
@@ -96,13 +99,18 @@ O instalador final será gerado na raiz do projeto com o nome **`StreamLive_Setu
 │       ├── Views/                # MainWindow, PipWindow, StreamTab e os diálogos
 │       ├── FFmpegLibs/           # DLLs do FFmpeg (Git LFS)
 │       └── NativeLibs/           # ApplicationLoopback.dll (captura de áudio por processo)
+├── tests/
+│   └── StreamLiveApp.Tests/      # xUnit: cripto, handshake de sala (servidor real), captura, rede
 └── publish_zip/                  # Saída do publish, consumida pelo instalador (gerada)
 ```
 
 O instalador final sai na raiz como **`StreamLive_Setup.exe`**.
 
-> ⚠️ **Não há suíte de testes no momento.** A anterior (xUnit, cobrindo cripto, serviços e o
-> handshake de sala) foi removida na reorganização e será recriada sob `tests/`.
+**Testes:** a suíte xUnit em `tests/` roda no CI a cada push. Localmente:
+
+```powershell
+.\.dotnet\dotnet.exe test StreamLive.sln -c Release
+```
 
 **Bibliotecas importantes**
 
@@ -141,6 +149,30 @@ reserva automática para máquinas onde a duplicação não está disponível (R
   A correção só existe na linha 10.x, que exige **.NET 10** — migrar o projeto inteiro é o
   pré-requisito para fechar esse ponto.
 - O canal de sinalização é `ws://` puro, sem TLS.
+- `Fleck` 1.2.0 (servidor WebSocket) não recebe atualizações há anos.
+
+---
+
+## 🔐 Riscos conhecidos
+
+Pontos que valem para quem for usar ou adaptar o projeto:
+
+- **Senha fraca pode ser quebrada offline.** O desafio e o HMAC do login passam pela VPN, e o
+  salt do PBKDF2 é fixo no app. Com senha longa isso fica impraticável. Salt por sala e chaves
+  separadas para o HMAC e para o AES seriam a próxima evolução.
+- **O servidor escuta em todas as interfaces (`0.0.0.0:8080`).** A lista de amigos por IP vem
+  ligada e é o que protege a porta. Se você desligar a lista e a porta estiver acessível por
+  outra rede (rede local, redirecionamento no roteador), qualquer um consegue assistir.
+- **O auto-update protege contra download corrompido, não contra conta comprometida.** O
+  `.sha256` vem da mesma release do instalador, e o instalador não é assinado. Quem tomasse a
+  conta do GitHub do autor poderia publicar uma versão maliciosa, e o app de quem já instalou
+  a aceitaria. Assinar o instalador fecha esse ponto.
+
+---
+
+## 📄 Licença
+
+Distribuído sob a licença MIT. Veja [`LICENSE`](LICENSE).
 
 ---
 

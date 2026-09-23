@@ -141,5 +141,3 @@ outro lugar reintroduz o bug: quem criasse a pasta nova primeiro cancelaria a mi
 - Testes são xUnit em `tests/StreamLiveApp.Tests/`; o `SignalingHandshakeTests` sobe um
   `SignalingServer` real em porta livre. O `NoWarn NU1903` (advisories do SIPSorcery 8.0.23) é
   proposital — só sai ao migrar para .NET 10.
-- A seção "Estrutura do Projeto" do README ainda afirma que não há suíte de testes; está
-  desatualizada — `tests/` existe e o CI a executa.
