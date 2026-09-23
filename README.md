@@ -160,6 +160,13 @@ Pontos que valem para quem for usar ou adaptar o projeto:
 - **Senha fraca pode ser quebrada offline.** O desafio e o HMAC do login passam pela VPN, e o
   salt do PBKDF2 é fixo no app. Com senha longa isso fica impraticável. Salt por sala e chaves
   separadas para o HMAC e para o AES seriam a próxima evolução.
+- **O viewer não descarta o que falha na descriptografia.** Numa sala com senha, se uma
+  mensagem ou pacote de áudio não decifra com a chave da sala, o `SignalingClient` usa o dado
+  bruto em vez de descartá-lo. Isso anula a autenticação do AES-GCM no lado de quem assiste:
+  alguém que consiga se colocar no meio do caminho dentro da VPN poderia injetar sinalização
+  ou áudio falso. A correção é descartar o que não decifra, mantendo só as mensagens de
+  controle que o host manda em claro (`AUTH_*`, `STATUS_RESPONSE`, `PONG`) — e fazer o viewer
+  esquecer a chave ao receber `STREAM_STOPPED`, senão a live seguinte sem senha não chega.
 - **O servidor escuta em todas as interfaces (`0.0.0.0:8080`).** A lista de amigos por IP vem
   ligada e é o que protege a porta. Se você desligar a lista e a porta estiver acessível por
   outra rede (rede local, redirecionamento no roteador), qualquer um consegue assistir.
