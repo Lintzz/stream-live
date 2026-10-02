@@ -53,6 +53,7 @@ namespace StreamLiveApp.Services
         public static bool Save(AppSettings settings)
         {
             ArgumentNullException.ThrowIfNull(settings);
+            if (DemoMode.IsEnabled) return true;
 
             var file = GetFilePath();
             var temp = file + ".tmp";

@@ -40,6 +40,9 @@ namespace StreamLiveApp.Services
         /// </summary>
         public static bool SaveFriends(List<Friend> friends)
         {
+            // No modo demonstração a lista é fictícia: gravar apagaria a lista de verdade.
+            if (DemoMode.IsEnabled) return true;
+
             var file = GetFilePath();
             var temp = file + ".tmp";
 

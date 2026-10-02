@@ -28,6 +28,10 @@ O SDK fica em `.dotnet/` (fora do versionamento). Num clone novo essa pasta não
 if (Test-Path "publish_zip") { Remove-Item -Recurse -Force "publish_zip" } ; & ".\.dotnet\dotnet.exe" publish src\StreamLiveApp\StreamLiveApp.csproj -c Release -r win-x64 --self-contained true -o "publish_zip" ; & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" build\setup.iss
 ```
 
+**Modo demonstração (`--demo`, `DemoMode`):** amigos fictícios, lives desenhadas pelo app, sem
+servidor na 8080 e sem gravar `friends.json`/`settings.json`. É o que gera o GIF e os prints de
+`docs/images/` — regrave por ele quando a UI mudar, nunca com a lista de amigos real.
+
 **Git LFS é obrigatório.** As DLLs do FFmpeg em `src/StreamLiveApp/FFmpegLibs/` (~145 MB)
 vivem no LFS. Sem `git lfs`, o working tree recebe ponteiros de texto e o build falha ao
 carregar o FFmpeg (`git lfs pull` conserta um clone já feito).

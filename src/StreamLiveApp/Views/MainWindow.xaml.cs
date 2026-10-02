@@ -104,7 +104,8 @@ namespace StreamLiveApp
             _settings = SettingsService.Load();
             ApplyLoadedSettings();
 
-            _friends = new ObservableCollection<Friend>(FriendsService.LoadFriends());
+            _friends = new ObservableCollection<Friend>(
+                DemoMode.IsEnabled ? DemoMode.CreateFriends() : FriendsService.LoadFriends());
 
             _friendsView = CollectionViewSource.GetDefaultView(_friends);
             _friendsView.SortDescriptions.Add(new SortDescription(nameof(Friend.SortRank), ListSortDirection.Ascending));
@@ -120,6 +121,16 @@ namespace StreamLiveApp
             UpdateSidebarEmptyStates();
 
             VersionText.Text = "Versão " + AppInfo.Version;
+
+            if (DemoMode.IsEnabled)
+            {
+                // Sem servidor, sem consulta de update e sem o aviso da VPN: nada disso cabe
+                // numa gravação, e o servidor brigaria pela porta 8080 com o app de verdade.
+                Title = "Stream Live (demonstração)";
+                UpdatePlayerControlsState();
+                LoadScreens();
+                return;
+            }
 
             var updateResult = await UpdateManager.CheckForUpdatesAsync();
             if (updateResult.HasUpdate)
@@ -323,6 +334,9 @@ namespace StreamLiveApp
 
         private static async System.Threading.Tasks.Task CheckFriendStatusAsync(Friend friend)
         {
+            // Status fixo no modo demonstração: sondar IPs fictícios só os deixaria offline.
+            if (DemoMode.IsEnabled) return;
+
             var status = await Services.FriendStatusService.CheckAsync(friend.Ip);
             friend.IsOnline = status.IsOnline;
             friend.IsStreaming = status.IsStreaming;
@@ -532,6 +546,12 @@ namespace StreamLiveApp
             // As lives abertas silenciam: o som delas voltaria para os seus viewers pelo loopback.
             ApplyBroadcastMuteToSessions(true);
 
+            if (DemoMode.IsEnabled)
+            {
+                StartDemoBroadcast();
+                return;
+            }
+
             if (_hostBroadcast == null) return;
 
             await _hostBroadcast.StartAsync(new BroadcastSettings
@@ -570,12 +590,38 @@ namespace StreamLiveApp
             StatusText.Visibility = Visibility.Visible;
             StatsOverlay.Visibility = Visibility.Collapsed;
 
+            _demoHostFeed?.Dispose();
+            _demoHostFeed = null;
+
             if (_hostBroadcast != null)
             {
                 await _hostBroadcast.StopAsync();
             }
 
             BtnStartStream.IsEnabled = true;
+        }
+
+        private DemoFeed? _demoHostFeed;
+
+        /// <summary>
+        /// Transmissão de mentira do <c>--demo</c>: o preview mostra uma cena desenhada em vez
+        /// da tela (que é a de quem está gravando), e o contador finge dois amigos assistindo.
+        /// </summary>
+        private void StartDemoBroadcast()
+        {
+            _demoHostFeed = new DemoFeed(DemoScene.Plataforma, rgb32: true);
+            _demoHostFeed.FrameReady += (pixels, width, height) =>
+            {
+                UpdateHostBitmap(pixels, width, height);
+                System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    StatusText.Visibility = Visibility.Collapsed);
+            };
+
+            StatsOverlay.Visibility = Visibility.Visible;
+            StatsText.Text = "📤 30fps | 2480.0 kbps | 🔊 50/s";
+            ViewerCountText.Text = "2 assistindo";
+            ViewerCountPanel.ToolTip = "Assistindo agora:\n• Bruno\n• Diego";
+            BtnTogglePreview.IsChecked = true;
         }
 
         private void ApplyBroadcastMuteToSessions(bool broadcasting)

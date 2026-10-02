@@ -261,6 +261,12 @@ namespace StreamLiveApp
 
         public async Task ConnectAsync()
         {
+            if (DemoMode.IsEnabled)
+            {
+                await StartDemoAsync();
+                return;
+            }
+
             BuildClient();
 
             await SetupStreamManagerAsync();
@@ -294,6 +300,37 @@ namespace StreamLiveApp
             SetHealth(ConnectionHealth.Conectando);
 
             await ConnectAsync();
+        }
+
+        // ───────────────────────────── Modo demonstração ─────────────────────────────
+
+        private DemoFeed? _demoFeed;
+
+        /// <summary>
+        /// Live de mentira para o <c>--demo</c>: os quadros vêm de uma cena desenhada aqui
+        /// mesmo e passam pelo mesmo <see cref="UpdateBitmap"/> do decoder, então a célula da
+        /// grade, o PiP e o teatro se comportam como numa live de verdade. Os números da
+        /// sobreposição são fixos — não há rede para medir.
+        /// </summary>
+        private async Task StartDemoAsync()
+        {
+            IsConnected = true;
+            Friend.IsWatching = true;
+
+            // Uma pausa curta, para o "Conectando..." aparecer como aparece de verdade.
+            await Task.Delay(600);
+            if (_disposed) return;
+
+            _demoFeed = new DemoFeed(DemoMode.SceneFor(Friend), rgb32: false);
+            _demoFeed.FrameReady += (pixels, width, height) =>
+            {
+                UpdateBitmap(pixels, width, height);
+                if (Health != ConnectionHealth.AoVivo) SetHealth(ConnectionHealth.AoVivo);
+            };
+
+            Fps = 30;
+            AudioFps = 50;
+            LatencyMs = Friend.Name == "Diego" ? 41 : 28;
         }
 
         private void BuildClient()
@@ -640,6 +677,8 @@ namespace StreamLiveApp
 
         public void Disconnect()
         {
+            _demoFeed?.Dispose();
+            _demoFeed = null;
             try { _client?.Stop(); } catch { }
             try { _streamManager?.Stop(); } catch { }
             IsConnected = false;

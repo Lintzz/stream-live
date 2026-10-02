@@ -4,6 +4,12 @@
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows-blue)
 ![Framework](https://img.shields.io/badge/.NET-8.0-purple)
 
+<p align="center">
+  <img src="docs/images/demo.gif" alt="Assistindo a live da Ana, abrindo a do Diego lado a lado, modo teatro e iniciando uma live privada para dois amigos" />
+</p>
+
+<p align="center"><sub>Amigos e lives fictícios, gravados com o modo demonstração (<code>--demo</code>). As cenas são desenhadas pelo próprio app no lugar das telas de verdade. Todas as telas estão em <a href="#-telas">Telas</a>.</sub></p>
+
 **Stream Live** é um aplicativo desktop desenvolvido em C# com WPF (.NET 8.0) focado na captura e transmissão de áudio e vídeo em tempo real. Ele foi projetado para facilitar sessões de streaming privadas com **amigos** via [Radmin VPN](https://www.radmin-vpn.com/), oferecendo opções avançadas de captura de tela e áudio (global ou por processo) usando WebSockets e WebRTC.
 
 > ⚠️ **Aviso de Segurança Importante!**
@@ -39,6 +45,19 @@ O projeto nasceu da seguinte necessidade:
   * Receber áudio e vídeo em alta qualidade (1080p).
   * Modo teatro (somente a live) e Tela Cheia (Fullscreen).
   * Controle de volume local.
+
+---
+
+## 📸 Telas
+
+| | |
+|---|---|
+| ![Lista de amigos com dois em live, um online e dois offline](docs/images/amigos.png) | ![Live da Ana aberta, com a barra de controles do player](docs/images/live.png) |
+| **Lista de amigos.** Verde: em live (clique para assistir). Amarelo: online sem transmitir. Cinza: offline. | **Uma live aberta.** A lista recolhe para o vídeo ocupar a janela; volume, estatísticas, PiP, teatro e tela cheia ficam na barra de baixo. |
+| ![Duas lives lado a lado em grade](docs/images/grade.png) | ![Diálogo de iniciar transmissão com senha e live privada](docs/images/iniciar-transmissao.png) |
+| **Várias lives em grade.** Cada uma com seu volume; um clique foca só nela sem desconectar as outras. | **Iniciar transmissão.** Senha opcional e live privada, escolhendo quais amigos podem ver. |
+| ![Transmitindo ao vivo, em modo privado, com o preview da própria tela](docs/images/transmitindo.png) | |
+| **Transmitindo.** Selos de *ao vivo* e *privada*, quem está assistindo e o preview da sua transmissão. As lives abertas ficam mudas para o som delas não voltar pela captura. | |
 
 ---
 
@@ -81,6 +100,7 @@ O instalador final será gerado na raiz do projeto com o nome **`StreamLive_Setu
 .
 ├── StreamLive.sln                # Solução (um projeto hoje; ponto de entrada do build)
 ├── global.json                   # Fixa o SDK na linha 8.0
+├── docs/images/                  # Vídeo e prints do README (gravados com --demo)
 ├── build/
 │   ├── setup.iss                 # Script do Inno Setup; caminhos relativos a esta pasta
 │   └── version.iss               # Gerado pelo build a partir de <Version> — não editar
@@ -105,6 +125,14 @@ O instalador final será gerado na raiz do projeto com o nome **`StreamLive_Setu
 ```
 
 O instalador final sai na raiz como **`StreamLive_Setup.exe`**.
+
+**Modo demonstração:** amigos fictícios, lives com cenas desenhadas pelo próprio app, sem rede
+(o servidor da porta 8080 não sobe) e sem gravar `friends.json` nem `settings.json`. É o modo
+usado no vídeo e nos prints acima:
+
+```powershell
+.\.dotnet\dotnet.exe run --project src\StreamLiveApp -c Release -- --demo
+```
 
 **Testes:** a suíte xUnit em `tests/` roda no CI a cada push. Localmente:
 

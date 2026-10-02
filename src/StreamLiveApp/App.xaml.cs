@@ -18,6 +18,11 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        // "--demo": amigos e lives fictícios, sem rede e sem gravar nada. Usado para o vídeo
+        // e os prints do README (ver DemoMode).
+        if (e.Args.Any(arg => arg.Equals("--demo", StringComparison.OrdinalIgnoreCase)))
+            DemoMode.Enable();
+
         // Primeira linha da sessão no diagnóstico: versão, build do Windows, GPU e dispositivo
         // de áudio. Sem esse cabeçalho, um log recebido de um amigo não diz nem em que máquina
         // foi gerado — e é justamente o build do Windows que decide metade do comportamento
