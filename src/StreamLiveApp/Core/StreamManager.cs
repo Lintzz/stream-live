@@ -54,6 +54,17 @@ namespace StreamLiveApp
         private System.Threading.Timer? _keyFrameRequestTimer;
         private TimeSpan _lastKeyFrameRequest = TimeSpan.MinValue;
 
+        // Viewer: perda de pacote de vídeo. O SIPSorcery remonta o quadro sem conferir se
+        // faltou algum pacote, e o FFmpeg "decodifica" o quadro furado com ocultação de erro —
+        // sai imagem, então nada aqui percebia. O estrago se propaga a todo quadro P seguinte
+        // (os borrões e blocos arrastados na tela) até o próximo keyframe periódico, 2 s
+        // depois. Com o buraco detectado na sequência RTP, o viewer pede o keyframe na hora e
+        // segura o último quadro bom em vez de exibir o lixo.
+        private static readonly TimeSpan MaxLossHold = TimeSpan.FromSeconds(1);
+        private bool _holdingForKeyFrame;
+        private TimeSpan _holdSince;
+        private int _videoPacketsLostLog;
+
         // ───────────────────────────── Áudio ─────────────────────────────
 
         // O áudio vai como PCM cru pelo WebSocket de sinalização, com um byte de marcação na
@@ -266,7 +277,7 @@ namespace StreamLiveApp
                                     if (now - _lastKeyFrame >= interval)
                                     {
                                         _lastKeyFrame = now;
-                                        _videoEncoder.ForceKeyFrame();
+                                        ForceIdr(_videoEncoder);
                                     }
                                     encoded = _videoEncoder.EncodeVideo(width, height, sample, format, VideoCodecsEnum.H264);
                                 }
@@ -507,6 +518,23 @@ namespace StreamLiveApp
 
         public void ForceKeyFrame() => StartKeyFrameBurst();
 
+        /// <summary>
+        /// Faz o próximo quadro sair IDR. Chamar sempre sob o <c>_encoderLock</c> de quem é dono do encoder.
+        ///
+        /// O <c>ForceKeyFrame()</c> do SIPSorcery não funciona com o libx264: ele só liga o
+        /// <c>AVFrame.key_frame</c>, e o libx264 lê o <c>pict_type</c>. O pedido era ignorado
+        /// em silêncio — o keyframe periódico, a rajada de quem entra e o pedido do viewer
+        /// depois de perda de pacote não produziam IDR nenhum, e o que limpava a imagem era só
+        /// o GOP próprio do x264. Recriar o contexto (o <c>SetThreadCount(null)</c> mantém a
+        /// configuração e chama o <c>ResetEncoder</c>) faz o primeiro quadro do encoder novo
+        /// sair IDR com SPS/PPS. <c>VideoLossRecoveryTests</c> trava isso contra upgrades.
+        /// </summary>
+        internal static void ForceIdr(IVideoEncoder? encoder)
+        {
+            if (encoder is FFmpegVideoEncoder ffmpeg) ffmpeg.SetThreadCount(null);
+            else encoder?.ForceKeyFrame();
+        }
+
         /// <summary>Abre uma janela em que os keyframes saem com frequencia bem maior.</summary>
         private void StartKeyFrameBurst()
         {
@@ -515,7 +543,7 @@ namespace StreamLiveApp
 
             lock (_encoderLock)
             {
-                try { _videoEncoder?.ForceKeyFrame(); } catch { }
+                try { ForceIdr(_videoEncoder); } catch { }
             }
             _lastKeyFrame = now;
             _lastForcedKeyFrame = now;
@@ -534,7 +562,7 @@ namespace StreamLiveApp
             _lastKeyFrame = now;
             lock (_encoderLock)
             {
-                try { _videoEncoder?.ForceKeyFrame(); } catch { }
+                try { ForceIdr(_videoEncoder); } catch { }
             }
         }
 
@@ -653,6 +681,16 @@ namespace StreamLiveApp
                 var audio = System.Threading.Interlocked.Exchange(ref _audioFramesDecoded, 0);
                 OnViewerFpsUpdated?.Invoke(fps);
                 OnAudioStatsUpdated?.Invoke(audio);
+
+                // Só a perda vai ao log, e em resumo: é o que separa "a rede está perdendo
+                // pacote" de "o host está mandando imagem ruim" quando alguém relata pixelada.
+                // Ping baixo não diz nada sobre isso — o ICMP não sofre a rajada de um keyframe.
+                if (++_statsTicks % StatsLogIntervalTicks == 0)
+                {
+                    var perdidos = System.Threading.Interlocked.Exchange(ref _videoPacketsLostLog, 0);
+                    if (perdidos > 0)
+                        DiagnosticLog.Warn("Video", $"viewer: {perdidos} pacotes de video perdidos nos ultimos 10s");
+                }
             }, null, 1000, 1000);
 
 
@@ -682,7 +720,44 @@ namespace StreamLiveApp
             OnLocalSdpReady?.Invoke("host", SignalingMessage.Serialize(request));
         }
 
-        private string IceCategory => _isHost ? "WebRTC/host" : "WebRTC/viewer";
+        private void OnVideoPacketsLost(int quantos)
+        {
+            System.Threading.Interlocked.Add(ref _videoPacketsLostLog, quantos);
+
+            if (!_holdingForKeyFrame)
+            {
+                _holdingForKeyFrame = true;
+                _holdSince = _keyFrameClock.Elapsed;
+            }
+            RequestKeyFrame();
+        }
+
+        /// <summary>
+        /// Distância entre o número de sequência RTP esperado e o recebido, com a volta do
+        /// contador de 16 bits: positivo = pacotes que faltaram, negativo = pacote atrasado
+        /// ou repetido, zero = em ordem.
+        /// </summary>
+        internal static int SequenceDelta(ushort esperado, ushort recebido)
+            => (short)(ushort)(recebido - esperado);
+
+        /// <summary>
+        /// Diz se o quadro (Annex B, como o depacketizador do SIPSorcery entrega) traz uma
+        /// fatia IDR — o único tipo de quadro que zera a referência quebrada no decoder.
+        /// </summary>
+        internal static bool ContainsIdrSlice(byte[] annexB)
+        {
+            for (int i = 0; i + 3 < annexB.Length; i++)
+            {
+                if (annexB[i] == 0 && annexB[i + 1] == 0 && annexB[i + 2] == 1)
+                {
+                    if ((annexB[i + 3] & 0x1F) == 5) return true;
+                    i += 2;
+                }
+            }
+            return false;
+        }
+
+        private string IceCategory =>_isHost ? "WebRTC/host" : "WebRTC/viewer";
 
         /// <summary>
         /// Candidatos ICE reunidos por peer, guardados até o desfecho da conexão.
@@ -822,6 +897,26 @@ namespace StreamLiveApp
 
             if (!_isHost)
             {
+                // Os dois eventos vêm da mesma thread de recepção do RTP, pacote a pacote e
+                // depois quadro a quadro — por isso os campos de retenção dispensam cadeado.
+                int expectedSeq = -1;
+                pc.OnRtpPacketReceived += (rep, media, packet) =>
+                {
+                    if (media != SDPMediaTypesEnum.video) return;
+
+                    var seq = packet.Header.SequenceNumber;
+                    if (expectedSeq >= 0)
+                    {
+                        var delta = SequenceDelta((ushort)expectedSeq, seq);
+
+                        // Atrasado ou repetido: o depacketizador ordena dentro do quadro, e
+                        // mover o esperado para trás contaria o resto do fluxo como perda.
+                        if (delta < 0) return;
+                        if (delta > 0) OnVideoPacketsLost(delta);
+                    }
+                    expectedSeq = (ushort)(seq + 1);
+                };
+
                 bool firstFrame = true;
                 pc.OnVideoFrameReceived += (IPEndPoint rep, uint timestamp, byte[] payload, VideoFormat format) =>
                 {
@@ -831,6 +926,17 @@ namespace StreamLiveApp
                         firstFrame = false;
                         OnConnectionStateChanged?.Invoke("Aguardando keyframe...");
                     }
+
+                    // O quadro ainda vai ao decoder durante a retenção — ele precisa seguir o
+                    // fluxo —, só não vai para a tela. O teto de tempo existe para o caso de o
+                    // keyframe nunca vir: aí volta a mostrar o que houver, como antes.
+                    bool segurando = _holdingForKeyFrame;
+                    if (segurando && (ContainsIdrSlice(payload) || _keyFrameClock.Elapsed - _holdSince > MaxLossHold))
+                    {
+                        _holdingForKeyFrame = false;
+                        segurando = false;
+                    }
+
                     List<SIPSorceryMedia.Abstractions.VideoSample>? samples = null;
                     lock (_encoderLock)
                     {
@@ -846,7 +952,7 @@ namespace StreamLiveApp
                             }
                         }
                     }
-                    if (samples != null && samples.Any())
+                    if (!segurando && samples != null && samples.Any())
                     {
                         var sample = samples.First();
                         if (sample.Sample != null)
