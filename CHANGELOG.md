@@ -11,6 +11,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 - Remover um amigo por engano agora tem volta: aparece "Desfazer" por alguns segundos.
 - Fechar o app no meio de uma live com amigos assistindo pede confirmação antes de derrubar a transmissão.
 
+### Acessibilidade
+- Dá para usar o app inteiro só com o teclado: assistir a um amigo, abrir mais de uma live, mostrar a lista de amigos com uma live aberta e abrir/fechar as configurações (Esc fecha).
+- O leitor de tela (Narrador, NVDA) anuncia o nome de todos os botões, o estado de cada amigo ("Ana, ao vivo"), os campos dos formulários e as mensagens que mudam sozinhas.
+- Contorno de foco bem visível e textos com mais contraste; o azul dos botões ficou um pouco mais escuro para o texto branco ser legível.
+
 ### Alterado
 - Senha da sala mais resistente: cada sala tem sua própria proteção, e descobrir a senha de uma não adianta nada para as outras.
 - O instalador passa a mostrar autor e links do projeto em "Aplicativos instalados" do Windows.
@@ -29,6 +34,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 - O botão de atualizar mostra a porcentagem do download e, se falhar, permite tentar de novo em vez de travar em "Baixando...".
 - Mensagens de erro dizem o que fazer, sem texto técnico.
 - Apelidos longos não cobrem mais o vídeo da live.
+- Avisos como "conexão recusada" e "amigo com versão antiga" agora aparecem num aviso no rodapé — antes ficavam escondidos na prévia da transmissão.
 
 ## [1.0.38] - 2026-10-04
 

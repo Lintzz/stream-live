@@ -2,10 +2,9 @@
 Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · Atualizado em: 2026-10-05
 
 ## Próximo
-- [ ] `/10-acessibilidade` — teclado, contraste e rótulos no WPF
+- [ ] `/11-performance` — 1080p, fps, CPU/GPU, áudio e latência em live real
 
 ## Depois
-- [ ] `/11-performance` — 1080p, fps, CPU/GPU, áudio e latência em live real
 - [ ] `/12-pre-lancamento` — antes da próxima release
 - [ ] `/14-revisao-geral` — conferência final e código morto
 
@@ -13,6 +12,7 @@ Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · A
 - [x] `/00-diagnosticar` — 05/10
 - [x] `/01-ambiente` — 05/10
 - [x] `/02-configurar` — 05/10 (SemVer, CHANGELOG, AppId fixo, smoke do .exe)
+- [x] `/10-acessibilidade` — 05/10 (12 itens + avisos que nunca apareciam; tudo pelo teclado)
 - [x] `/07-seguranca` — 05/10 (A,B,C,D,F,G corrigidos; protocolo v2 → próxima release 2.0.0; E aceito)
 - [x] `/06-interface` — 05/10 (7 itens corrigidos; ConfirmDialog e Desfazer como padrão)
 - [x] `/04-git` — 05/10 (nenhum segredo; cache do LFS no CI)

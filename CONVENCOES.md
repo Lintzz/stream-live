@@ -23,6 +23,17 @@ Descreve o padrão que o código já segue. Arquitetura e armadilhas estão no C
 - Nome de amigo exibido: `TextTrimming="CharacterEllipsis"` com o nome inteiro no `ToolTip`
 - Mensagem de erro ao usuário: o que fazer, sem texto de exceção; o detalhe vai para `DiagnosticLog.Error`
 
+## Acessibilidade (WCAG 2.2 AA, medida na árvore de UI Automation)
+- Tudo que é clicável é `Button`/`ToggleButton`/`Hyperlink`, nunca `Border`/`TextBlock` com `MouseLeftButtonDown` — senão não entra no Tab nem abre com Enter (modelo: `FriendCardButton`)
+- Botão só com ícone (glifo Segoe MDL2) leva `AutomationProperties.Name`; se envolve um amigo, o nome diz qual ("Remover Ana")
+- Estilo de botão novo inclui `<Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>` — estilo nomeado não herda o implícito
+- Controle que só aparece com o mouse (opacidade 0) sai do Tab quando não tem função, ou acende ao receber foco do teclado
+- Texto que muda sozinho (status, aviso, erro) usa `local:LiveAnnouncer.Mode` (Polite; Assertive para erro)
+- Campo de formulário: `AutomationProperties.LabeledBy` no rótulo visível, ou `Name` quando não há rótulo
+- Contraste: texto ≥ 4,5:1, borda de campo e ícone ≥ 3:1. Texto secundário: `#9A9AA4`; fundo de botão com texto branco: `#0078D4` (o `#0094F2` só como texto/ícone/borda sobre fundo escuro)
+- Painel em camada (como as configurações): foco entra ao abrir, `KeyboardNavigation.TabNavigation="Cycle"`, Esc fecha, foco volta a quem abriu
+- Conferência: roteiro de Tab por UI Automation em `--demo` (ver `auditorias/10-acessibilidade.md`)
+
 ## Versionamento
 - Padrão: SemVer (MAIOR.MENOR.CORREÇÃO), contado a partir da 1.0.38 (tag `v1.0.38`) — antes disso toda release subia só o último número
 - A 1.0.0 já passou: o app está em uso pelos amigos desde as primeiras releases
