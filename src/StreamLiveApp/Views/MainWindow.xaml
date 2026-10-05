@@ -301,8 +301,8 @@
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Text="Tela:" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold"/>
-                    <ComboBox x:Name="CboWindows" Width="130" Margin="0,0,10,0" DisplayMemberPath="Title"
+                    <TextBlock x:Name="LblScreen" Text="Tela:" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold"/>
+                    <ComboBox x:Name="CboWindows" AutomationProperties.Name="Tela para transmitir" Width="130" Margin="0,0,10,0" DisplayMemberPath="Title"
                               VerticalAlignment="Center" Height="30"
                               DropDownOpened="CboWindows_DropDownOpened" SelectionChanged="CboWindows_SelectionChanged">
                         <ComboBox.ItemContainerStyle>

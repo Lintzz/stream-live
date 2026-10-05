@@ -86,12 +86,15 @@
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <TextBlock Text="Apelido" Foreground="#AAAAAA" FontSize="11" Margin="0,0,0,3"/>
-                    <TextBox x:Name="TxtNewName" Style="{StaticResource DarkTextBox}"/>
+                    <TextBlock x:Name="LblNewName" Text="Apelido" Foreground="#AAAAAA" FontSize="11" Margin="0,0,0,3"/>
+                    <TextBox x:Name="TxtNewName" Style="{StaticResource DarkTextBox}"
+                             AutomationProperties.LabeledBy="{Binding ElementName=LblNewName}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2">
-                    <TextBlock Text="IP" Foreground="#AAAAAA" FontSize="11" Margin="0,0,0,3"/>
+                    <TextBlock x:Name="LblNewIp" Text="IP" Foreground="#AAAAAA" FontSize="11" Margin="0,0,0,3"/>
                     <TextBox x:Name="TxtNewIp" Style="{StaticResource DarkTextBox}"
+                             AutomationProperties.LabeledBy="{Binding ElementName=LblNewIp}"
+                             AutomationProperties.HelpText="IP da Radmin VPN do amigo, ex.: 26.10.0.5"
                              LostFocus="TxtNewIp_LostFocus" TextChanged="TxtNewIp_TextChanged"/>
                 </StackPanel>
                 <Button Grid.Column="4" Content="Adicionar" Width="80" Height="28" VerticalAlignment="Bottom"
@@ -141,11 +144,13 @@
                                     <Ellipse Grid.Column="0" Width="9" Height="9" Margin="2,0,8,0" VerticalAlignment="Center"
                                              Fill="{Binding StatusColor}" ToolTip="Verde: em live | Amarelo: online | Cinza: offline"/>
                                     <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                             AutomationProperties.Name="{Binding Ip, StringFormat='Apelido do amigo {0}'}"
                                              Style="{StaticResource DarkTextBox}" ToolTip="Apelido"/>
                                     <!-- LostFocus, e não a cada tecla: com PropertyChanged o IP
                                          "26.1" virava o IP do amigo (e era sondado e salvo) no meio
                                          da digitação. IP inválido não chega ao amigo. -->
-                                    <TextBox Grid.Column="3" Style="{StaticResource DarkTextBox}">
+                                    <TextBox Grid.Column="3" Style="{StaticResource DarkTextBox}"
+                                             AutomationProperties.Name="{Binding DisplayName, StringFormat='IP de {0}'}">
                                         <TextBox.Text>
                                             <Binding Path="Ip" UpdateSourceTrigger="LostFocus">
                                                 <Binding.ValidationRules>
