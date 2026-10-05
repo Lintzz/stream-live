@@ -278,6 +278,7 @@ namespace StreamLiveApp
                                         _lastKeyFrame = now;
                                         ForceIdr(_videoEncoder);
                                     }
+                                    if (_videoEncoder is FFmpegVideoEncoder ffmpegEncoder) PrepareEncoder(ffmpegEncoder, width, height);
                                     encoded = _videoEncoder.EncodeVideo(width, height, sample, format, VideoCodecsEnum.H264);
                                 }
                                 catch (Exception encodeEx)
@@ -504,16 +505,46 @@ namespace StreamLiveApp
                     // Portanto, usamos o libx264 com perfil 'ultrafast' e 'zerolatency' para garantir baixíssimo uso de CPU,
                     // simulando a performance de uma GPU. Já houve um 'veryfast' opcional aqui: a diferença de
                     // imagem não se via em campo e o custo de CPU sim, então o ultrafast virou fixo.
-                    var x264Options = new Dictionary<string, string>
-                    {
-                        { "preset", "ultrafast" },
-                        { "tune", "zerolatency" }
-                    };
-
-                    _videoEncoder = new FFmpegVideoEncoder(x264Options);
+                    _videoEncoder = CreateH264Encoder();
                 }
             }
         }
+
+        /// <summary>Taxa que a captura entrega com a tela em movimento (medido: ~59 fps).</summary>
+        internal const int TargetFps = 60;
+
+        /// <summary>Teto do vídeo por amigo, em kbps.</summary>
+        internal const int MaxVideoKbps = 8000;
+
+        /// <summary>
+        /// libx264 em qualidade constante (CRF 23, o padrão que já rodava) com teto de bitrate
+        /// pelo VBV. Sem teto, 1080p em movimento saía a 8–12 Mbps por amigo — e cada amigo
+        /// recebe uma cópia, então o upload do host multiplicava. O teto só corta os picos; cena
+        /// comum fica abaixo dele com a mesma qualidade de antes.
+        /// O VBV vai por x264-params: o SIPSorcery aplica as opções no priv_data do x264, onde
+        /// "maxrate"/"bufsize" (que são do contexto genérico) não existem e eram ignorados.
+        /// </summary>
+        internal static FFmpegVideoEncoder CreateH264Encoder()
+        {
+            var x264Options = new Dictionary<string, string>
+            {
+                { "preset", "ultrafast" },
+                { "tune", "zerolatency" },
+                { "crf", "23" },
+                { "x264-params", $"vbv-maxrate={MaxVideoKbps}:vbv-bufsize={MaxVideoKbps / 2}" }
+            };
+            return new FFmpegVideoEncoder(x264Options);
+        }
+
+        /// <summary>
+        /// Inicializa o encoder declarando a taxa real antes de codificar. O EncodeVideo do
+        /// SIPSorcery inicializa com 30 fps fixos — e o ForceIdr recria o encoder a cada keyframe
+        /// forçado —, enquanto a captura entrega até 60: o controle de taxa distribuía o
+        /// orçamento como se cada quadro valesse o dobro do tempo, e o teto saía dobrado.
+        /// Já inicializado, o InitialiseEncoder não faz nada; chamar a cada quadro é barato.
+        /// </summary>
+        internal static void PrepareEncoder(FFmpegVideoEncoder encoder, int width, int height)
+            => encoder.InitialiseEncoder(FFmpeg.AutoGen.AVCodecID.AV_CODEC_ID_H264, width, height, TargetFps);
 
         public void ForceKeyFrame() => StartKeyFrameBurst();
 
