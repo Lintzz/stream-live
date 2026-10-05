@@ -1433,7 +1433,7 @@ namespace StreamLiveApp
             };
         }
 
-        private void GithubLink_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void GithubLink_Click(object sender, RoutedEventArgs e)
         {
             e.Handled = true;
             try
