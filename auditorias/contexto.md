@@ -37,7 +37,7 @@ Atualizado em: 2026-10-05
 - Build (skill `/build`): `if (Test-Path publish_zip) { Remove-Item -Recurse -Force publish_zip }; .\.dotnet\dotnet.exe publish src\StreamLiveApp\StreamLiveApp.csproj -c Release -r win-x64 --self-contained true -o publish_zip; & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" build\setup.iss` → `StreamLive_Setup.exe` na raiz (copiar para builds/windows/ com a versão no nome)
 - Release: anexar um `.exe` e o `.sha256` dele: `(Get-FileHash <exe> -Algorithm SHA256).Hash.ToLower() + "  <nome do exe>" | Set-Content <exe>.sha256`
 - Versão atual: 2.0.0 · última entrega: v2.0.0, 2026-10-05, publicada no GitHub (https://github.com/Lintzz/stream-live/releases/tag/v2.0.0) por decisão do dono antes do teste de live real; builds/windows/StreamLive-Setup-2.0.0.exe (121 MB) + .sha256; CI verde no commit da release (224 testes, smoke do .exe no runner)
-- Última build de teste: 2026-10-05, builds/windows/StreamLive-Setup-2.0.0-dev-36ffaa9.exe (121 MB) — ícone novo + Radmin abrindo na bandeja com o app, para um amigo testar antes da 2.1.0; não publicada
+- Última build de teste: 2026-10-05, builds/windows/StreamLive-Setup-2.0.0-dev-df11796.exe (121 MB) — ícone novo; Radmin aberto na bandeja, ligado sozinho e fechado junto (com confirmação); não publicada
 - Asset da release: sempre `StreamLive_Setup.exe` + `StreamLive_Setup.exe.sha256` (nome usado por todas as releases); a cópia em builds/ leva a versão no nome
 - Versão mora em: `<Version>` do StreamLiveApp.csproj (gera AppInfo.Version e build/version.iss)
 - Dependências conferidas em: 2026-10-05 — 0 vulnerabilidades depois da subida para SIPSorcery 10.0.17 + FFmpeg 8.1.2; NAudio e Vortice atrasados
