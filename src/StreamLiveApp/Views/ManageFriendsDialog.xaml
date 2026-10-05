@@ -1,6 +1,7 @@
 <Window x:Class="StreamLiveApp.ManageFriendsDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:StreamLiveApp"
         Title="Gerenciar Amigos" Height="460" Width="520"
         MinHeight="360" MinWidth="420"
         WindowStyle="None" ResizeMode="CanResize" WindowStartupLocation="CenterOwner"
@@ -17,6 +18,15 @@
             <Setter Property="Height" Value="28"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="CaretBrush" Value="White"/>
+            <!-- Erro de validação (IP da lista): borda vermelha e a dica no tooltip, no lugar
+                 do adorner padrão, que some atrás da janela sem moldura. -->
+            <Setter Property="Validation.ErrorTemplate" Value="{x:Null}"/>
+            <Style.Triggers>
+                <Trigger Property="Validation.HasError" Value="True">
+                    <Setter Property="BorderBrush" Value="#E81123"/>
+                    <Setter Property="ToolTip" Value="{Binding RelativeSource={RelativeSource Self}, Path=(Validation.Errors)[0].ErrorContent}"/>
+                </Trigger>
+            </Style.Triggers>
         </Style>
 
         <Style x:Key="DialogButton" TargetType="Button">
@@ -81,14 +91,19 @@
                 </StackPanel>
                 <StackPanel Grid.Column="2">
                     <TextBlock Text="IP" Foreground="#AAAAAA" FontSize="11" Margin="0,0,0,3"/>
-                    <TextBox x:Name="TxtNewIp" Style="{StaticResource DarkTextBox}"/>
+                    <TextBox x:Name="TxtNewIp" Style="{StaticResource DarkTextBox}"
+                             LostFocus="TxtNewIp_LostFocus" TextChanged="TxtNewIp_TextChanged"/>
                 </StackPanel>
                 <Button Grid.Column="4" Content="Adicionar" Width="80" Height="28" VerticalAlignment="Bottom"
                         Background="#0094F2" Foreground="White" Style="{StaticResource DialogButton}" Click="BtnAdd_Click"/>
             </Grid>
 
-            <TextBlock x:Name="TxtHint" Grid.Row="2" Text="Clique nos campos da lista para editar o apelido ou o IP."
-                       Foreground="#777777" FontSize="11" Margin="0,4,0,8" TextWrapping="Wrap"/>
+            <StackPanel Grid.Row="2" Margin="0,4,0,8">
+                <TextBlock x:Name="TxtAddError" Foreground="#FF6B6B" FontSize="11" TextWrapping="Wrap"
+                           Margin="0,0,0,4" Visibility="Collapsed"/>
+                <TextBlock x:Name="TxtHint" Text="Clique nos campos da lista para editar o apelido ou o IP."
+                           Foreground="#777777" FontSize="11" TextWrapping="Wrap"/>
+            </StackPanel>
 
             <Border Grid.Row="3" Background="#141419" BorderBrush="#2D2D35" BorderThickness="1" CornerRadius="6">
                 <Grid>
@@ -127,8 +142,18 @@
                                              Fill="{Binding StatusColor}" ToolTip="Verde: em live | Amarelo: online | Cinza: offline"/>
                                     <TextBox Grid.Column="1" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
                                              Style="{StaticResource DarkTextBox}" ToolTip="Apelido"/>
-                                    <TextBox Grid.Column="3" Text="{Binding Ip, UpdateSourceTrigger=PropertyChanged}"
-                                             Style="{StaticResource DarkTextBox}" ToolTip="IP"/>
+                                    <!-- LostFocus, e não a cada tecla: com PropertyChanged o IP
+                                         "26.1" virava o IP do amigo (e era sondado e salvo) no meio
+                                         da digitação. IP inválido não chega ao amigo. -->
+                                    <TextBox Grid.Column="3" Style="{StaticResource DarkTextBox}">
+                                        <TextBox.Text>
+                                            <Binding Path="Ip" UpdateSourceTrigger="LostFocus">
+                                                <Binding.ValidationRules>
+                                                    <local:FriendIpRule/>
+                                                </Binding.ValidationRules>
+                                            </Binding>
+                                        </TextBox.Text>
+                                    </TextBox>
                                     <Button Grid.Column="5" Content="&#xE107;" FontFamily="Segoe MDL2 Assets" FontSize="12"
                                             Width="28" Height="28" Background="#3A1F22" Foreground="#E81123"
                                             Style="{StaticResource DialogButton}" Click="BtnRemove_Click" ToolTip="Remover"/>

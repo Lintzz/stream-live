@@ -16,6 +16,30 @@ namespace StreamLiveApp.Services
 
         private static string GetFilePath() => AppPaths.GetFilePath("friends.json");
 
+        /// <summary>
+        /// IPv4 em quatro partes de 0 a 255, sem zero à esquerda nem espaço. Estrito de
+        /// propósito: o IPAddress.TryParse aceita "26.10" (lido como 26.0.0.10) e "26.10.0.05",
+        /// e um IP salvo assim faz o amigo aparecer sempre offline sem pista do motivo.
+        /// Quem chama apara os espaços antes.
+        /// </summary>
+        internal static bool IsValidFriendIp(string? ip)
+        {
+            if (string.IsNullOrEmpty(ip)) return false;
+
+            var parts = ip.Split('.');
+            if (parts.Length != 4) return false;
+
+            foreach (var part in parts)
+            {
+                if (part.Length is 0 or > 3) return false;
+                if (part.Length > 1 && part[0] == '0') return false;
+                foreach (var c in part)
+                    if (c is < '0' or > '9') return false;
+                if (int.Parse(part) > 255) return false;
+            }
+            return true;
+        }
+
         public static List<Friend> LoadFriends()
         {
             try
