@@ -79,18 +79,19 @@ namespace StreamLiveApp
         {
             InitializeComponent();
 
-            // A barra do player aparece com o mouse. Pelo teclado, o foco chegava em botões
-            // invisíveis: ela acende quando um deles recebe foco e fica enquanto o foco estiver lá.
-            VideoControlsBar.IsKeyboardFocusWithinChanged += (s, ev) =>
-            {
-                if ((bool)ev.NewValue) ShowVideoControls();
-                else { _mouseIdleTimer.Stop(); _mouseIdleTimer.Start(); }
-            };
             DataContext = this;
 
             _mouseIdleTimer = new System.Windows.Threading.DispatcherTimer();
             _mouseIdleTimer.Interval = TimeSpan.FromSeconds(2.5);
             _mouseIdleTimer.Tick += MouseIdleTimer_Tick;
+
+            // A barra do player aparece com o mouse. Pelo teclado, o foco chegava em botões
+            // invisíveis: ela acende quando um deles recebe foco e fica enquanto o foco estiver lá.
+            VideoControlsBar.IsKeyboardFocusWithinChanged += (s, ev) =>
+            {
+                if (ev.NewValue is true) ShowVideoControls();
+                else { _mouseIdleTimer.Stop(); _mouseIdleTimer.Start(); }
+            };
             this.MouseMove += MainWindow_MouseMove;
             this.Loaded += MainWindow_Loaded;
 
