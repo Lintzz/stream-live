@@ -13,10 +13,10 @@ Referência: WCAG 2.2 AA aplicada a app WPF. Medição pela árvore de UI Automa
 - Médio — Mensagens dinâmicas mudas: LiveAnnouncer (LiveRegionChanged). Conferido: evento recebido com o texto do erro do IP
 - Médio (bug geral, achado aqui) — ShowTransientStatus escrevia na prévia escondida; avisos nunca apareciam. Agora aviso flutuante no rodapé. **Não conferido na tela**: o --demo não dispara esses avisos
 - Baixo — Foco pouco visível: AppFocusVisual (contorno azul 2 px) em todos os estilos; botão de sair do quadro aparece com foco. Conferido
+- Alto (achado no /12) — Com live aberta, os cards da lista de amigos ficavam com o par de automação velho (o ItemsControl guarda um peer por item e não o troca quando os containers são recriados): o Tab chegava neles, mas o leitor de tela anunciava "Stream Live". LiveItemsControl calcula os filhos da árvore visual atual. Conferido: "Ana, assistindo. Enter para sair da live" depois de reabrir a lateral. O "Diego pelo Tab: True" relatado antes era falso positivo
 - Baixo — Link do GitHub só de mouse: Hyperlink "Código no GitHub". Conferido (focável, papel de link)
 
 ## Pendente
-- Alto (achado no /12, 2026-10-05) — Com uma live aberta, depois de reabrir a lista de amigos pelo puxador, o Tab chega nos cards e o Enter funciona, mas a UI Automation não acha os cards: o leitor de tela anuncia o nome da janela ("Stream Live") em vez de "Diego, ao vivo". Sem live, os nomes saem certos. O "Diego pelo Tab: True" do teste do /10 era falso positivo (o roteiro casava o nome depois de a lista ter sido montada). Tentado e descartado: InvalidatePeer na lista ao reabrir (não resolveu); Visibility.Hidden no lugar de Collapsed (piorou). Próximo passo: descobrir se é a reordenação da lista (SortRank muda quando uma live abre) ou o Collapsed
 - 🔍 Teste humano com o Narrador ligado (roteiro abaixo) — Médio
 - 🔍 Texto do Windows em 150% (Acessibilidade → Tamanho do texto) — Baixo
 

@@ -521,8 +521,8 @@
                     <Grid Grid.Row="1">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <!-- Margem de 2 px: o contorno de foco do card passa da borda e era cortado. -->
-                            <ItemsControl x:Name="LstFriendsSidebar" Margin="2" Focusable="False" AutomationProperties.Name="Amigos">
-                                <ItemsControl.ItemTemplate>
+                            <local:LiveItemsControl x:Name="LstFriendsSidebar" Margin="2" Focusable="False" AutomationProperties.Name="Amigos">
+                                <local:LiveItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <!-- Button, e não um Border com MouseLeftButtonUp: o card era a
                                              única porta para assistir e não recebia foco nem Enter — sem
@@ -591,8 +591,8 @@
                                         </Border>
                                         </Button>
                                     </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                                </local:LiveItemsControl.ItemTemplate>
+                            </local:LiveItemsControl>
                         </ScrollViewer>
 
                         <StackPanel x:Name="SidebarEmptyState" VerticalAlignment="Center" Visibility="Collapsed">
