@@ -5,6 +5,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 
 ## [Não lançado]
 
+## [2.0.0] - 2026-10-05
+
 > ⚠️ **Atualize junto com seus amigos.** A sala com senha mudou a forma de conferir a senha: quem estiver numa versão anterior não consegue entrar numa sala com senha de quem já atualizou (e vice-versa). O app avisa quando o outro lado está desatualizado. Salas sem senha continuam funcionando entre versões.
 
 ### Adicionado
@@ -45,5 +47,6 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 
 Estado do projeto ao adotar o kit. O histórico anterior está nas [releases do GitHub](https://github.com/Lintzz/stream-live/releases).
 
-[Não lançado]: https://github.com/Lintzz/stream-live/compare/v1.0.38...HEAD
+[Não lançado]: https://github.com/Lintzz/stream-live/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/Lintzz/stream-live/compare/v1.0.38...v2.0.0
 [1.0.38]: https://github.com/Lintzz/stream-live/releases/tag/v1.0.38
