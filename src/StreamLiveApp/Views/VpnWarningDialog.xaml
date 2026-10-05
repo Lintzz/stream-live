@@ -1,6 +1,7 @@
 <Window x:Class="StreamLiveApp.VpnWarningDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:StreamLiveApp"
         Title="Radmin VPN" SizeToContent="Height" Width="420"
         WindowStyle="None" ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
         AllowsTransparency="True" Background="Transparent"
@@ -47,7 +48,7 @@
                        TextWrapping="Wrap" Visibility="Collapsed"
                        Text="Não encontramos a Radmin VPN instalada nesta máquina. Instale-a e abra antes de transmitir."/>
 
-            <TextBlock x:Name="TxtError" Foreground="#FF6B6B" FontSize="12" Margin="0,12,0,0"
+            <TextBlock x:Name="TxtError" local:LiveAnnouncer.Mode="Assertive" Foreground="#FF6B6B" FontSize="12" Margin="0,12,0,0"
                        TextWrapping="Wrap" Visibility="Collapsed"/>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
