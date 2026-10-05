@@ -554,14 +554,31 @@ namespace StreamLiveApp
 
             if (_hostBroadcast == null) return;
 
-            await _hostBroadcast.StartAsync(new BroadcastSettings
+            try
             {
-                Source = selectedSource,
-                RoomPassword = _lastRoomPassword,
-                PrivateLive = _lastPrivateLive,
-                InvitedIps = _lastInvitedIps,
-                ExcludedAudioProcessId = ResolveExcludedAudioPid()
-            });
+                await _hostBroadcast.StartAsync(new BroadcastSettings
+                {
+                    Source = selectedSource,
+                    RoomPassword = _lastRoomPassword,
+                    PrivateLive = _lastPrivateLive,
+                    InvitedIps = _lastInvitedIps,
+                    ExcludedAudioProcessId = ResolveExcludedAudioPid()
+                });
+            }
+            catch (Exception ex)
+            {
+                // A janela já tinha ido para "AO VIVO" (resposta imediata ao clique); sem
+                // desfazer, ela seguia dizendo que a live estava no ar. O HostBroadcast não
+                // anunciou nada aos amigos — só a tela precisa voltar.
+                DiagnosticLog.Error("Live", "Falha ao iniciar a transmissão", ex);
+                ResetBroadcastUi();
+                BtnStartStream.IsEnabled = true;
+                System.Windows.MessageBox.Show(this,
+                    "Não foi possível iniciar a transmissão.\n\n" +
+                    "Confira se a tela escolhida ainda existe e se o antivírus não bloqueou o app. " +
+                    "Se continuar, gere o relatório de diagnóstico nas configurações.",
+                    "Transmitir", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
 
         private async void BtnStopStream_Click(object sender, RoutedEventArgs e)
@@ -569,6 +586,19 @@ namespace StreamLiveApp
             // A janela volta ao estado "parado" na hora; a desmontagem vem logo atrás, fora da
             // thread de UI. O botão de transmitir fica desabilitado nesse intervalo para não
             // subir uma live nova por cima da que ainda está sendo encerrada.
+            ResetBroadcastUi();
+
+            if (_hostBroadcast != null)
+            {
+                await _hostBroadcast.StopAsync();
+            }
+
+            BtnStartStream.IsEnabled = true;
+        }
+
+        /// <summary>Volta a janela ao estado "sem live", e deixa o Transmitir desabilitado.</summary>
+        private void ResetBroadcastUi()
+        {
             _isBroadcasting = false;
             BtnStartStream.Visibility = Visibility.Visible;
             BtnStartStream.IsEnabled = false;
@@ -592,13 +622,6 @@ namespace StreamLiveApp
 
             _demoHostFeed?.Dispose();
             _demoHostFeed = null;
-
-            if (_hostBroadcast != null)
-            {
-                await _hostBroadcast.StopAsync();
-            }
-
-            BtnStartStream.IsEnabled = true;
         }
 
         private DemoFeed? _demoHostFeed;

@@ -64,6 +64,18 @@ namespace StreamLiveApp
         /// <summary>Caminho de captura em uso — "DXGI" ou "GDI".</summary>
         public string ActiveCaptureMode => _streamManager?.ActiveCaptureMode ?? "—";
 
+        /// <summary>
+        /// Sobe captura e encoder. Trocável só nos testes, para simular a falha de
+        /// inicialização sem depender de tela, placa de som ou antivírus.
+        /// </summary>
+        internal Action<StreamManager, BroadcastSettings> InitializeHost { get; init; } = (manager, settings) =>
+        {
+            manager.SetTargetSource(settings.Source);
+            manager.SetExcludedAudioProcess(settings.ExcludedAudioProcessId);
+            manager.SetResolution(settings.Width, settings.Height);
+            manager.InitializeHost();
+        };
+
         public HostBroadcast(SignalingServer? server)
         {
             _server = server;
@@ -87,6 +99,23 @@ namespace StreamLiveApp
             manager.OnBinaryDataReady += (data) => BinaryAudioReady?.Invoke(data);
             manager.HasAudioListeners = () => _server?.HasBroadcastTargets == true;
 
+            // Fora da thread de UI: iniciar a captura e o encoder trava por algumas centenas
+            // de milissegundos.
+            //
+            // A live só é anunciada depois que a captura subiu. Antes o servidor já passava a
+            // responder "em live" aqui em cima: se a captura falhava (tela ou áudio
+            // indisponível, FFmpeg bloqueado), os amigos viam o host ao vivo e entravam numa
+            // tela preta. Quem chama recebe a exceção e devolve a janela ao estado parado.
+            try
+            {
+                await Task.Run(() => InitializeHost(manager, settings));
+            }
+            catch
+            {
+                if (ReferenceEquals(_streamManager, manager)) StopStreamManager();
+                throw;
+            }
+
             if (_server != null)
             {
                 _server.RoomPassword = settings.RoomPassword;
@@ -96,17 +125,6 @@ namespace StreamLiveApp
 
             IsPrivateLive = settings.PrivateLive;
             InvitedCount = settings.PrivateLive ? settings.InvitedIps.Count : 0;
-
-            // Fora da thread de UI: iniciar a captura e o encoder trava por algumas centenas
-            // de milissegundos.
-            await Task.Run(() =>
-            {
-                manager.SetTargetSource(settings.Source);
-                manager.SetExcludedAudioProcess(settings.ExcludedAudioProcessId);
-                manager.SetResolution(settings.Width, settings.Height);
-                manager.InitializeHost();
-            });
-
             IsBroadcasting = true;
             _server?.BroadcastMessage("STREAM_STARTED");
         }
