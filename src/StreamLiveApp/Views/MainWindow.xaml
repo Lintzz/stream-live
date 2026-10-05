@@ -414,42 +414,54 @@
                 </Border>
 
                 <!-- Botão da lista de amigos: fica sobre o vídeo e some junto com os controles -->
-                <Border x:Name="SidebarHandle" HorizontalAlignment="Left" VerticalAlignment="Center"
+                <Button x:Name="SidebarHandle" HorizontalAlignment="Left" VerticalAlignment="Center"
                         Panel.ZIndex="21" Opacity="0" IsHitTestVisible="False"
                         Background="#D91E1E24" BorderBrush="#4D4D57" BorderThickness="0,1,1,1"
-                        CornerRadius="0,6,6,0" Padding="4,16" Cursor="Hand" ToolTip="Mostrar amigos"
-                        MouseLeftButtonDown="SidebarHandle_Click">
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Style.Triggers>
+                        Padding="4,16" Cursor="Hand" ToolTip="Mostrar amigos" AutomationProperties.Name="Mostrar amigos"
+                        FocusVisualStyle="{StaticResource AppFocusVisual}"
+                        GotKeyboardFocus="FloatingHandle_GotKeyboardFocus" Click="SidebarHandle_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="0,6,6,0"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter/>
+                            </Border>
+                            <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#F22D2D35"/>
+                                    <Setter TargetName="bg" Property="Background" Value="#F22D2D35"/>
                                 </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Border.Style>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
                     <TextBlock x:Name="SidebarHandleArrow" Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="11"
                                Foreground="#D8D8DE" HorizontalAlignment="Center"/>
-                </Border>
+                </Button>
 
                 <!-- Botão do painel de transmitir: mesmo gesto do botão de amigos, só que na borda de cima -->
-                <Border x:Name="TopPanelHandle" HorizontalAlignment="Center" VerticalAlignment="Top"
+                <Button x:Name="TopPanelHandle" HorizontalAlignment="Center" VerticalAlignment="Top"
                         Panel.ZIndex="21" Opacity="0" IsHitTestVisible="False" Visibility="Collapsed"
                         Background="#D91E1E24" BorderBrush="#4D4D57" BorderThickness="1,0,1,1"
-                        CornerRadius="0,0,6,6" Padding="16,4" Cursor="Hand" ToolTip="Esconder controles de transmissão"
-                        MouseLeftButtonDown="TopPanelHandle_Click">
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Style.Triggers>
+                        Padding="16,4" Cursor="Hand" ToolTip="Esconder controles de transmissão" AutomationProperties.Name="Esconder controles de transmissão"
+                        FocusVisualStyle="{StaticResource AppFocusVisual}"
+                        GotKeyboardFocus="FloatingHandle_GotKeyboardFocus" Click="TopPanelHandle_Click">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="0,0,6,6"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter/>
+                            </Border>
+                            <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#F22D2D35"/>
+                                    <Setter TargetName="bg" Property="Background" Value="#F22D2D35"/>
                                 </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Border.Style>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
                     <TextBlock x:Name="TopPanelHandleArrow" Text="&#xE70E;" FontFamily="Segoe MDL2 Assets" FontSize="11"
                                Foreground="#D8D8DE" VerticalAlignment="Center"/>
-                </Border>
+                </Button>
 
                         <!-- Controles do player: somem sozinhos e voltam quando o mouse passa -->
                         <Grid x:Name="VideoControlsBar" VerticalAlignment="Bottom" Visibility="Collapsed"

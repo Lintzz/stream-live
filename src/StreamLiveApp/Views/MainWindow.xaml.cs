@@ -921,12 +921,18 @@ namespace StreamLiveApp
             else SetTopPanelOpen(true);
         }
 
-        private void SidebarHandle_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void SidebarHandle_Click(object sender, RoutedEventArgs e)
         {
             // Sem marcar como tratado, o clique sobe para a janela e vira DragMove.
             e.Handled = true;
             SetSidebarOpen(SidebarPanel.Visibility != Visibility.Visible);
         }
+
+        // Os puxadores da lateral e do painel de cima são botões (antes, Borders só de mouse:
+        // com uma live aberta a lista de amigos recolhia e o teclado não tinha como trazê-la de
+        // volta). Ficam invisíveis até o mouse passar; pelo teclado, acendem ao receber foco.
+        private void FloatingHandle_GotKeyboardFocus(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e)
+            => ShowVideoControls();
 
         private void SetSidebarOpen(bool open)
         {
@@ -934,6 +940,7 @@ namespace StreamLiveApp
             SidebarColumn.Width = open ? new GridLength(230) : new GridLength(0);
             SidebarHandleArrow.Text = open ? "\uE76B" : "\uE76C";
             SidebarHandle.ToolTip = open ? "Esconder amigos" : "Mostrar amigos";
+            System.Windows.Automation.AutomationProperties.SetName(SidebarHandle, (string)SidebarHandle.ToolTip);
         }
 
         /// <summary>
@@ -944,7 +951,7 @@ namespace StreamLiveApp
         /// </summary>
         private bool _topPanelOpen = true;
 
-        private void TopPanelHandle_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void TopPanelHandle_Click(object sender, RoutedEventArgs e)
         {
             // Sem marcar como tratado, o clique sobe para a janela e vira DragMove.
             e.Handled = true;
@@ -957,6 +964,7 @@ namespace StreamLiveApp
             TopPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
             TopPanelHandleArrow.Text = open ? "\uE70E" : "\uE70D";
             TopPanelHandle.ToolTip = open ? "Esconder controles de transmissão" : "Mostrar controles de transmissão";
+            System.Windows.Automation.AutomationProperties.SetName(TopPanelHandle, (string)TopPanelHandle.ToolTip);
         }
 
         /// <summary>Em teatro e tela cheia nada além do vídeo fica na tela.</summary>
@@ -1242,7 +1250,7 @@ namespace StreamLiveApp
 
             // Enquanto o mouse estiver na barra ou num dos botões flutuantes, nada some.
             if (VideoControlsButtons.IsMouseOver || SidebarHandle.IsMouseOver || TopPanelHandle.IsMouseOver
-                || VideoControlsBar.IsKeyboardFocusWithin)
+                || VideoControlsBar.IsKeyboardFocusWithin || SidebarHandle.IsKeyboardFocused || TopPanelHandle.IsKeyboardFocused)
             {
                 _mouseIdleTimer.Start();
                 return;
