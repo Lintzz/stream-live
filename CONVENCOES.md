@@ -16,6 +16,13 @@ Descreve o padrão que o código já segue. Arquitetura e armadilhas estão no C
 - Caminhos de arquivo só via AppPaths; gravação de settings em `.tmp` + move
 - Versão só no `<Version>` do csproj
 
+## Componentes de interface (estados)
+- Ação destrutiva sem volta: `ConfirmDialog.Ask(owner, título, mensagem, "Verbo + objeto")` (Views/ConfirmDialog) — botão repete a ação, cor de perigo, foco em Cancelar. Não use MessageBox Sim/Não para isso
+- Ação que dá para desfazer: faça na hora e ofereça "Desfazer" por alguns segundos (modelo: barra `UndoBar` do ManageFriendsDialog)
+- Erro de campo: texto vermelho (#FF6B6B, 11px) logo abaixo do campo, validado ao sair do campo e escondido assim que fica válido; na edição em lista, ValidationRule + borda vermelha com a dica no tooltip (modelo: FriendIpRule)
+- Nome de amigo exibido: `TextTrimming="CharacterEllipsis"` com o nome inteiro no `ToolTip`
+- Mensagem de erro ao usuário: o que fazer, sem texto de exceção; o detalhe vai para `DiagnosticLog.Error`
+
 ## Versionamento
 - Padrão: SemVer (MAIOR.MENOR.CORREÇÃO), contado a partir da 1.0.38 (tag `v1.0.38`) — antes disso toda release subia só o último número
 - A 1.0.0 já passou: o app está em uso pelos amigos desde as primeiras releases

@@ -2,10 +2,9 @@
 Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · Atualizado em: 2026-10-05
 
 ## Próximo
-- [ ] `/06-interface` — estados de carregamento, vazio e erro na lista de amigos, lives e diálogos
+- [ ] `/07-seguranca` — porta 8080 na VPN, HMAC, limites do WebSocket, integridade do auto-update
 
 ## Depois
-- [ ] `/07-seguranca` — porta 8080 na VPN, HMAC, limites do WebSocket, integridade do auto-update
 - [ ] `/10-acessibilidade` — teclado, contraste e rótulos no WPF
 - [ ] `/11-performance` — 1080p, fps, CPU/GPU, áudio e latência em live real
 - [ ] `/12-pre-lancamento` — antes da próxima release
@@ -15,6 +14,7 @@ Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · A
 - [x] `/00-diagnosticar` — 05/10
 - [x] `/01-ambiente` — 05/10
 - [x] `/02-configurar` — 05/10 (SemVer, CHANGELOG, AppId fixo, smoke do .exe)
+- [x] `/06-interface` — 05/10 (7 itens corrigidos; ConfirmDialog e Desfazer como padrão)
 - [x] `/04-git` — 05/10 (nenhum segredo; cache do LFS no CI)
 - [x] `dependencias` — 05/10 (SIPSorcery 10 + FFmpeg 8.1; 0 vulnerabilidades; falta teste de live real)
 
