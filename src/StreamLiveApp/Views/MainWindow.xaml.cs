@@ -115,6 +115,7 @@ namespace StreamLiveApp
 
             _settings = SettingsService.Load();
             ApplyLoadedSettings();
+            SetupRadmin();
 
             _friends = new ObservableCollection<Friend>(
                 DemoMode.IsEnabled ? DemoMode.CreateFriends() : FriendsService.LoadFriends());
@@ -181,6 +182,143 @@ namespace StreamLiveApp
             var dialog = VpnWarningDialog.Create(VpnStatusService.FindExecutable());
             dialog.Owner = this;
             dialog.ShowDialog();
+
+            if (dialog.WantsToJoinFromApp) OpenRadminSettings();
+        }
+
+        // ---------------------------------------------------------------- Radmin VPN
+
+        private RadminConnectionViewModel? _radmin;
+
+        /// <summary>
+        /// Aba "Radmin VPN". A verificação inicial roda em segundo plano (serviço, adaptador e,
+        /// se a janela do Radmin já estiver na tela, a lista de redes) e não atrasa a abertura.
+        /// </summary>
+        private void SetupRadmin()
+        {
+            IRadminController controller = DemoMode.IsEnabled ? new DemoRadminController() : new RadminController();
+            _radmin = new RadminConnectionViewModel(controller, new RadminCredentialStore())
+            {
+                ConfirmDisconnect = ConfirmRadminDisconnect
+            };
+            _radmin.AttentionNeeded += ShowTransientStatus;
+            RadminTab.DataContext = _radmin;
+
+            if (DemoMode.IsEnabled)
+            {
+                // Nunca a rede salva de verdade: ela apareceria nos prints do README.
+                _radmin.NetworkName = "amigos-da-live";
+                TxtRadminPassword.Password = "demonstracao";
+            }
+            else if (_radmin.LoadSaved() is string savedPassword)
+            {
+                TxtRadminPassword.Password = savedPassword;
+            }
+
+            _ = _radmin.RefreshAsync();
+        }
+
+        private void OpenRadminSettings()
+        {
+            SettingsTabs.SelectedItem = RadminTab;
+            BtnSettingsModal_Click(this, new RoutedEventArgs());
+        }
+
+        /// <summary>Desligar a VPN derruba a sua live e as que você assiste: pergunta antes.</summary>
+        private bool ConfirmRadminDisconnect()
+        {
+            if (!_isBroadcasting && _sessions.Count == 0) return true;
+
+            return ConfirmDialog.Ask(this,
+                "Desligar o Radmin agora?",
+                "Enquanto o Radmin estiver desligado, sua live e as lives que você está assistindo param para todos.",
+                "Desligar Radmin");
+        }
+
+        private string CurrentRadminPassword()
+            => BtnRadminReveal.IsChecked == true ? TxtRadminPasswordVisible.Text : TxtRadminPassword.Password;
+
+        private async void BtnRadminConnect_Click(object sender, RoutedEventArgs e)
+        {
+            if (_radmin == null) return;
+
+            bool connected = await _radmin.ConnectAsync(CurrentRadminPassword());
+
+            if (connected)
+            {
+                // Volta a ocultar a senha depois de usar, como no formulário de qualquer site.
+                BtnRadminReveal.IsChecked = false;
+            }
+            else if (_radmin.NetworkNameError.Length > 0)
+            {
+                TxtRadminNetwork.Focus();
+            }
+            else if (_radmin.PasswordError.Length > 0)
+            {
+                if (BtnRadminReveal.IsChecked == true) TxtRadminPasswordVisible.Focus();
+                else TxtRadminPassword.Focus();
+            }
+        }
+
+        private async void BtnRadminDisconnect_Click(object sender, RoutedEventArgs e)
+        {
+            if (_radmin != null) await _radmin.DisconnectAsync();
+        }
+
+        private async void BtnRadminStartService_Click(object sender, RoutedEventArgs e)
+        {
+            if (_radmin != null) await _radmin.StartServiceAsync();
+        }
+
+        private void TxtRadminNetwork_LostFocus(object sender, RoutedEventArgs e)
+        {
+            // Clicar em Conectar também tira o foco do campo; a validação de lá já cobre.
+            if (BtnRadminConnect.IsMouseOver) return;
+            _radmin?.ValidateNetworkName();
+        }
+
+        private void RadminField_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (e.Key != System.Windows.Input.Key.Enter || _radmin?.CanConnect != true) return;
+            e.Handled = true;
+            BtnRadminConnect_Click(sender, e);
+        }
+
+        private void RadminPassword_Changed(object sender, RoutedEventArgs e)
+            => _radmin?.PasswordChanged(CurrentRadminPassword().Length > 0);
+
+        private void BtnRadminReveal_Changed(object sender, RoutedEventArgs e)
+        {
+            bool reveal = BtnRadminReveal.IsChecked == true;
+            if (reveal)
+            {
+                TxtRadminPasswordVisible.Text = TxtRadminPassword.Password;
+                TxtRadminPasswordVisible.Visibility = Visibility.Visible;
+                TxtRadminPassword.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                TxtRadminPassword.Password = TxtRadminPasswordVisible.Text;
+                TxtRadminPasswordVisible.Text = "";
+                TxtRadminPassword.Visibility = Visibility.Visible;
+                TxtRadminPasswordVisible.Visibility = Visibility.Collapsed;
+            }
+
+            var label = reveal ? "Ocultar senha" : "Mostrar senha";
+            System.Windows.Automation.AutomationProperties.SetName(BtnRadminReveal, label);
+            BtnRadminReveal.ToolTip = label;
+        }
+
+        private void RadminExitOption_Changed(object sender, RoutedEventArgs e) => PersistSettings();
+
+        private void RadminInstallLink_Click(object sender, RoutedEventArgs e)
+        {
+            e.Handled = true;
+            try
+            {
+                Process.Start(new ProcessStartInfo { FileName = "https://www.radmin-vpn.com/", UseShellExecute = true });
+            }
+            catch { }
         }
 
         /// <summary>
@@ -1359,6 +1497,8 @@ namespace StreamLiveApp
             // Lido na abertura: o caminho só se define depois que a captura sobe, e pode
             // trocar sozinho no meio da transmissão.
             UpdateCaptureModeText();
+            // O Radmin pode ter sido ligado, desligado ou ter trocado de rede por fora do app.
+            _ = _radmin?.RefreshAsync();
             SettingsModalOverlay.Visibility = Visibility.Visible;
 
             // O foco ficava na engrenagem, atrás da camada: o Tab percorria a janela de trás
@@ -1403,6 +1543,8 @@ namespace StreamLiveApp
             try
             {
                 ChkFriendsOnly.IsChecked = _settings.RestrictToFriends;
+                ChkRadminDisconnectOnExit.IsChecked = _settings.RadminDisconnectOnExit;
+                ChkRadminCloseOnExit.IsChecked = _settings.RadminCloseOnExit;
             }
             finally
             {
@@ -1419,6 +1561,8 @@ namespace StreamLiveApp
             if (_loadingSettings) return;
 
             _settings.RestrictToFriends = ChkFriendsOnly?.IsChecked != false;
+            _settings.RadminDisconnectOnExit = ChkRadminDisconnectOnExit?.IsChecked == true;
+            _settings.RadminCloseOnExit = ChkRadminCloseOnExit?.IsChecked == true;
 
             SettingsService.Save(_settings);
         }
@@ -1606,6 +1750,9 @@ namespace StreamLiveApp
 
         protected override void OnClosed(EventArgs e)
         {
+            // Antes do ForceExit, que mata o processo sem esperar ninguém. Tem teto de 3 s: um
+            // Radmin travado não segura o fechamento.
+            _radmin?.Shutdown(_settings.RadminDisconnectOnExit, _settings.RadminCloseOnExit);
             _server?.Stop();
             _hostBroadcast?.Dispose();
             foreach (var session in _sessions.ToList())

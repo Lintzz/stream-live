@@ -701,7 +701,7 @@
                     </Grid>
                     
                     <!-- Tabs -->
-                    <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="10,0,10,10">
+                    <TabControl x:Name="SettingsTabs" Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="10,0,10,10">
                         <TabControl.Resources>
                             <Style TargetType="TabItem">
                                 <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
@@ -743,6 +743,159 @@
                             </ScrollViewer>
                         </TabItem>
                         
+                        <!-- Radmin Tab: binding no RadminConnectionViewModel (DataContext posto no code-behind).
+                             A senha fica fora do binding de propósito: o PasswordBox não expõe a senha
+                             como propriedade, e ela só sai daqui no clique em Conectar. -->
+                        <TabItem x:Name="RadminTab" Header="Radmin VPN" FontSize="14" FontWeight="SemiBold">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,20,10,10">
+                                <StackPanel TextElement.FontWeight="Normal">
+                                    <!-- Status -->
+                                    <Border Background="#1E1E24" CornerRadius="6" Padding="12,10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Ellipse Width="10" Height="10" Margin="0,5,10,0" VerticalAlignment="Top">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Fill" Value="#9A9AA4"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding State}" Value="Connected"><Setter Property="Fill" Value="#33E539"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding State}" Value="On"><Setter Property="Fill" Value="#0094F2"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding State}" Value="ServiceStopped"><Setter Property="Fill" Value="#E8A33D"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding State}" Value="NotInstalled"><Setter Property="Fill" Value="#FF6B6B"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding State}" Value="Error"><Setter Property="Fill" Value="#FF6B6B"/></DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsBusy}" Value="True"><Setter Property="Fill" Value="#E8A33D"/></DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock x:Name="RadminStatusText" Text="{Binding StatusText}" Foreground="White" FontSize="14" FontWeight="SemiBold"
+                                                           TextWrapping="Wrap" local:LiveAnnouncer.Mode="Polite"/>
+                                                <TextBlock Text="{Binding StatusDetail}" Foreground="#9A9AA4" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Margin="0,6,0,0" FontSize="12" Visibility="{Binding ShowInstallLink, Converter={StaticResource BoolToVis}}">
+                                                    <!-- IsEnabled junto da visibilidade: Hyperlink dentro de TextBlock recolhido
+                                                         continua focável no WPF e vira uma parada do Tab invisível. -->
+                                                    <Hyperlink Foreground="#0094F2" FocusVisualStyle="{StaticResource AppFocusVisual}" Click="RadminInstallLink_Click"
+                                                               IsEnabled="{Binding ShowInstallLink}">Baixar a Radmin VPN (site oficial)</Hyperlink>
+                                                </TextBlock>
+                                                <Button Content="Iniciar serviço" Style="{StaticResource ModernButton}" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                                        Visibility="{Binding ShowStartService, Converter={StaticResource BoolToVis}}"
+                                                        AutomationProperties.HelpText="Pede permissão de administrador ao Windows"
+                                                        Click="BtnRadminStartService_Click"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Campos -->
+                                    <TextBlock x:Name="LblRadminNetwork" Text="Nome da rede" Foreground="White" FontSize="13" Margin="0,16,0,6"/>
+                                    <TextBox x:Name="TxtRadminNetwork" Style="{StaticResource ModernTextBox}" Height="32" Padding="8,0" CaretBrush="White"
+                                             FocusVisualStyle="{StaticResource AppFocusVisual}"
+                                             Text="{Binding NetworkName, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanEdit}"
+                                             AutomationProperties.LabeledBy="{Binding ElementName=LblRadminNetwork}"
+                                             AutomationProperties.HelpText="{Binding NetworkNameError}"
+                                             LostFocus="TxtRadminNetwork_LostFocus" KeyDown="RadminField_KeyDown"/>
+                                    <TextBlock Text="{Binding NetworkNameError}" Foreground="#FF6B6B" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"
+                                               local:LiveAnnouncer.Mode="Assertive">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <TextBlock x:Name="LblRadminPassword" Text="Senha" Foreground="White" FontSize="13" Margin="0,12,0,6"/>
+                                    <Grid IsEnabled="{Binding CanEdit}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <PasswordBox x:Name="TxtRadminPassword" Height="32" Background="#1E1E24" Foreground="White"
+                                                     BorderBrush="#6A6A75" BorderThickness="1" Padding="8,0" VerticalContentAlignment="Center" CaretBrush="White"
+                                                     FocusVisualStyle="{StaticResource AppFocusVisual}"
+                                                     AutomationProperties.LabeledBy="{Binding ElementName=LblRadminPassword}"
+                                                     AutomationProperties.HelpText="{Binding PasswordError}"
+                                                     PasswordChanged="RadminPassword_Changed" KeyDown="RadminField_KeyDown"/>
+                                        <TextBox x:Name="TxtRadminPasswordVisible" Height="32" Background="#1E1E24" Foreground="White"
+                                                 BorderBrush="#6A6A75" BorderThickness="1" Padding="8,0" VerticalContentAlignment="Center" CaretBrush="White"
+                                                 FocusVisualStyle="{StaticResource AppFocusVisual}"
+                                                 AutomationProperties.LabeledBy="{Binding ElementName=LblRadminPassword}"
+                                                 AutomationProperties.HelpText="{Binding PasswordError}"
+                                                 Visibility="Collapsed" TextChanged="RadminPassword_Changed" KeyDown="RadminField_KeyDown"/>
+                                        <ToggleButton x:Name="BtnRadminReveal" Grid.Column="1" Width="34" Height="32" Margin="6,0,0,0"
+                                                      FocusVisualStyle="{StaticResource AppFocusVisual}" AutomationProperties.Name="Mostrar senha" ToolTip="Mostrar senha"
+                                                      Background="#2D2D35" Foreground="#AAAAAA" BorderThickness="0" Cursor="Hand"
+                                                      Content="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                                      Checked="BtnRadminReveal_Changed" Unchecked="BtnRadminReveal_Changed">
+                                            <ToggleButton.Template>
+                                                <ControlTemplate TargetType="ToggleButton">
+                                                    <Border Background="{TemplateBinding Background}" CornerRadius="5">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </ToggleButton.Template>
+                                        </ToggleButton>
+                                    </Grid>
+                                    <TextBlock Text="{Binding PasswordError}" Foreground="#FF6B6B" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"
+                                               local:LiveAnnouncer.Mode="Assertive">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <CheckBox Content="Lembrar rede neste computador" Foreground="White" FontSize="13" Margin="0,12,0,0"
+                                              IsChecked="{Binding RememberNetwork}" IsEnabled="{Binding CanEdit}"/>
+                                    <TextBlock Foreground="#9A9AA4" FontSize="11" Margin="26,4,0,0" TextWrapping="Wrap"
+                                               Text="Nome e senha ficam cifrados pelo Windows, só para a sua conta. Nada é enviado para fora do computador."/>
+
+                                    <!-- Ações: largura fixa para o botão não pular ao trocar para "Conectando…" -->
+                                    <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                                        <Button x:Name="BtnRadminConnect" Content="{Binding ConnectButtonText}" Style="{StaticResource PrimaryButton}" Width="130" Height="34"
+                                                IsEnabled="{Binding CanConnect}" Click="BtnRadminConnect_Click"/>
+                                        <Button Content="Desconectar" Style="{StaticResource ModernButton}" Width="130" Height="34" Margin="10,0,0,0"
+                                                AutomationProperties.HelpText="Desliga o Radmin. Você continua membro das redes."
+                                                IsEnabled="{Binding CanDisconnect}" Click="BtnRadminDisconnect_Click"/>
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding Message}" FontSize="12" Margin="0,10,0,0" TextWrapping="Wrap" local:LiveAnnouncer.Mode="Polite">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#33E539"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding MessageIsError}" Value="True"><Setter Property="Foreground" Value="#FF6B6B"/></DataTrigger>
+                                                    <Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <!-- Fechamento -->
+                                    <TextBlock Text="Ao fechar o Stream Live" Foreground="White" FontSize="14" Margin="0,22,0,8"/>
+                                    <CheckBox x:Name="ChkRadminDisconnectOnExit" Content="Desconectar do Radmin ao fechar o app" Foreground="White" FontSize="13"
+                                              Checked="RadminExitOption_Changed" Unchecked="RadminExitOption_Changed"/>
+                                    <CheckBox x:Name="ChkRadminCloseOnExit" Content="Fechar o processo do Radmin ao fechar o app" Foreground="White" FontSize="13" Margin="0,8,0,0"
+                                              Checked="RadminExitOption_Changed" Unchecked="RadminExitOption_Changed"/>
+                                    <TextBlock Foreground="#9A9AA4" FontSize="11" Margin="26,4,0,0" TextWrapping="Wrap"
+                                               Text="Só vale para o que o Stream Live fez nesta sessão. Se o Radmin já estava aberto ou conectado antes, ele fica como estava."/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
                         <!-- Info Tab -->
                         <TabItem Header="Info" FontSize="14" FontWeight="SemiBold">
                             <Grid Margin="10,20,10,10">

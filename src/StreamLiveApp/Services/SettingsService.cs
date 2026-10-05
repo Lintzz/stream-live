@@ -16,6 +16,15 @@ namespace StreamLiveApp.Services
 
         /// <summary>Só IPs da lista de amigos conseguem conectar.</summary>
         public bool RestrictToFriends { get; set; } = true;
+
+        /// <summary>
+        /// Desliga o Radmin ao fechar — só se foi o app que conectou nesta sessão. Desligado de
+        /// fábrica: o Radmin costuma servir a outras coisas (jogos) além do Stream Live.
+        /// </summary>
+        public bool RadminDisconnectOnExit { get; set; }
+
+        /// <summary>Fecha o Radmin ao sair — só se foi o app que o abriu nesta sessão.</summary>
+        public bool RadminCloseOnExit { get; set; }
     }
 
     /// <summary>Lê e grava as preferências em <c>settings.json</c>, ao lado do <c>friends.json</c>.</summary>

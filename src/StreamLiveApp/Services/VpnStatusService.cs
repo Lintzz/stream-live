@@ -44,6 +44,8 @@ namespace StreamLiveApp.Services
             {
                 var candidates = new[]
                 {
+                    // Pasta escolhida no instalador; cobre quem instalou fora do Program Files.
+                    ReadInstallLocation() is string folder ? Path.Combine(folder, Path.GetFileName(ExecutableRelativePath)) : null,
                     // O Radmin é 32 bits, então em quase toda máquina cai no primeiro.
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), ExecutableRelativePath),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), ExecutableRelativePath)
@@ -55,6 +57,38 @@ namespace StreamLiveApp.Services
             {
                 return null;
             }
+        }
+
+        /// <summary>
+        /// InstallLocation da entrada de desinstalação do Radmin VPN (só leitura). A chave fica
+        /// no ramo de 32 bits, mas o nome dela é um GUID que muda entre versões, então a busca
+        /// é pelo DisplayName.
+        /// </summary>
+        private static string? ReadInstallLocation()
+        {
+            foreach (var root in new[]
+            {
+                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+            })
+            {
+                using var uninstall = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(root);
+                if (uninstall == null) continue;
+
+                foreach (var name in uninstall.GetSubKeyNames())
+                {
+                    using var entry = uninstall.OpenSubKey(name);
+                    if (entry?.GetValue("DisplayName") is string display
+                        && display.StartsWith("Radmin VPN", StringComparison.OrdinalIgnoreCase)
+                        && entry.GetValue("InstallLocation") is string location
+                        && !string.IsNullOrWhiteSpace(location))
+                    {
+                        return location;
+                    }
+                }
+            }
+
+            return null;
         }
 
         /// <summary>Primeiro candidato que existe. Puro, para poder ser testado sem tocar no disco.</summary>
@@ -77,7 +111,8 @@ namespace StreamLiveApp.Services
 
             try
             {
-                // UseShellExecute porque o Radmin pede elevação: sem o shell o Start falha.
+                // UseShellExecute porque versões antigas do Radmin pediam elevação, e sem o shell
+                // o Start falha nelas. O 2.1 já roda sem admin (manifest asInvoker).
                 Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
                 return true;
             }

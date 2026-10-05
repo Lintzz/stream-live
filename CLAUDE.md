@@ -152,6 +152,27 @@ preset `ultrafast`, escala por vizinho mais próximo e prioridade `BelowNormal`)
 manual de captura GDI — o **fallback automático** DXGI→GDI descrito acima continua valendo.
 Nenhuma das três era usada como escolha; só um dos valores rodava.
 
+### Radmin VPN pela tela do app
+
+A aba "Radmin VPN" das configurações (`RadminConnectionViewModel`) entra numa rede do Radmin
+sem abrir o Radmin. O Radmin **não tem** linha de comando nem API para isso (o executável só
+aceita `/minimized`), então `RadminUiAutomation` dirige a janela dele por UI Automation — é a
+**única** classe que toca a interface do Radmin, com os seletores em constantes. A GUI é Qt
+Widgets e publica o caminho de objectName como `AutomationId`, igual em qualquer idioma; só os
+menus vão por nome (pt/en) com a posição como reserva. Armadilhas medidas no Radmin 2.1.1:
+- O primeiro `MenuBar` da árvore é o menu de sistema do Windows ("Sistema"), não o do Qt: a
+  barra se acha pelo id. Nunca busque a partir da raiz com `Descendants` (varre o desktop).
+- O Qt prende a janela na tela pelo `TransformPattern`; fora da tela só com `SetWindowPos`.
+- Na bandeja, a janela some da árvore; abrir o `.exe` de novo traz a instância (é única), e o
+  X do Radmin a esconde de volta. Erro de entrar vira tooltip (`QTipLabel`) com o diálogo
+  aberto, e "rede inexistente" e "senha errada" dão a **mesma** mensagem.
+- O serviço é `RvControlSvc` e segura a VPN sozinho; a GUI roda sem admin. Iniciar o serviço
+  pede UAC só no clique (`sc start` com `runas`) — o app não roda como admin.
+- O IP 26.x é da conta, não da rede: só a lista de redes da janela prova "estou na rede X".
+- Fechamento só desfaz o que o app fez na sessão (`DecideExitCleanup`). A senha fica em
+  `radmin_rede.dat` (DPAPI, CurrentUser), fora do `settings.json` e do relatório de
+  diagnóstico; nem senha nem nome da rede vão para o log.
+
 ### Persistência e estado
 
 `friends.json` e `settings.json` em `%LOCALAPPDATA%\StreamLiveApp\` (mesma pasta de
