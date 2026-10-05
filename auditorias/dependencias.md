@@ -17,10 +17,12 @@ Lockfile: não há packages.lock.json; versões fixadas exatas no csproj
 
 ## Pendente
 - Teste de live real entre duas máquinas na VPN (vídeo, áudio, reconexão) antes da próxima release — Alta, só humano
-- Tamanho: FFmpegLibs foi de ~145 MB para ~253 MB (avfilter-11 sozinho tem 124 MB). Avaliar no /11-performance se avfilter/avdevice podem sair do pacote
 
 ## Aceitas
 - Nenhuma
+
+## Decidido depois
+- 2026-10-05 (/11-performance): FFmpegLibs fica com ~253 MB. O FFmpegInit chama avdevice_register_all e a avdevice depende da avfilter (124 MB) — sem as duas o app não inicializa o FFmpeg. Instalador: 121 MB
 
 ## Desatualizadas sem vulnerabilidade (manutenção futura)
 - NAudio 2.2.1 → 3.1.0 (major; mexe no áudio)

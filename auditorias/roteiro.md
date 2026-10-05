@@ -6,12 +6,13 @@ Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · A
 - [ ] `/build` — release 2.0.0 (sobe a versão, gera o instalador, pergunta antes do push e da Release)
 
 ## Depois
-- [ ] `/14-revisao-geral` — conferência final e código morto
+- [ ] `/14-revisao-geral` de novo, depois da release, para fechar em 🟢
 
 ## Concluídas
 - [x] `/00-diagnosticar` — 05/10
 - [x] `/01-ambiente` — 05/10
 - [x] `/02-configurar` — 05/10 (SemVer, CHANGELOG, AppId fixo, smoke do .exe)
+- [x] `/14-revisao-geral` — 05/10 (🔴 só por falta de live real e CI; sem regressões; docs atualizados)
 - [x] `/12-pre-lancamento` — 05/10 (🟡: falta live real e CI verde; prints regravados; PathMap)
 - [x] `/11-performance` — 05/10 (sem encode sem público; teto 8 Mbps com 60 fps declarados; prévia só visível)
 - [x] `/10-acessibilidade` — 05/10 (12 itens + avisos que nunca apareciam; tudo pelo teclado)

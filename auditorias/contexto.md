@@ -54,7 +54,8 @@ Atualizado em: 2026-10-05
 - Lista de amigos com status online, sala com senha (HMAC + AES-GCM), live privada com convidados
 - Aviso de Radmin VPN fechada, diagnóstico embutido, modo demonstração
 - Auto-update verificado por SHA-256
-- 224 testes xUnit + CI no GitHub Actions
+- Desde a 2.0 (ainda não lançada): protocolo de sala v2 (salt por sala, chaves separadas), bloqueio após 5 senhas erradas, descarte do que não decifra; desfazer remoção de amigo; confirmação ao fechar com amigos assistindo; validação de IP; uso completo pelo teclado e leitor de tela; vídeo com teto de 8 Mbps e encode só com público
+- 224 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
 
 ## Planejado, ainda não feito
 - Trocar o ícone do app
