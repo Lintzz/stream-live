@@ -7,6 +7,7 @@ Data: 2026-10-05 · Commits: `4d4877d` (ícone), `a1fcaeb` (Radmin, **revertido*
 - No lugar: na abertura, Radmin fechado → o app o abre com `/minimized`, direto na bandeja, sem janela na tela; o aviso só aparece se não está instalado ou não abriu
 - Conferido no PC do dono: Radmin aberto pelo app em ~1 s com `/minimized`, nenhuma janela visível além do contêiner de 22×22 que o Radmin sempre mantém na bandeja, adaptador Up, sem aviso; o Radmin continua aberto depois de fechar o Stream Live
 - Caso novo: `BuildStartInfo_OpensRadminStraightToTheTray` (escrito antes, falhou, depois passou). 225 testes verdes
+- Depois (commit `8080856`): o Radmin quase sempre sobe off-line (volta no estado em que foi fechado). Com `PowerOn=0`, o app liga sozinho: clique postado no botão de energia da janela escondida e, como reserva, "Ficar on-line" do menu da bandeja (pisca ~180 ms perto do relógio; o Esc depois é obrigatório, o Invoke não fecha o menu). Medido no PC do dono: on-line 3,2 s depois de abrir o app, nenhum menu preso. Descartados por teste: TogglePattern, janela transparente, região vazia, redimensionar a janela escondida, gravar no registro (só leitura sem admin). 239 testes
 - As seções abaixo descrevem a versão removida e ficam como referência; os AutomationId medidos estão em `auditorias/contexto.md` (seção Radmin VPN) e o código está no commit `a1fcaeb`
 
 ---

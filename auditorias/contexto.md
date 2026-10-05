@@ -57,8 +57,8 @@ Atualizado em: 2026-10-05
 - Aviso de Radmin VPN fechada, diagnóstico embutido, modo demonstração
 - Auto-update verificado por SHA-256
 - Desde a 2.0 (ainda não lançada): protocolo de sala v2 (salt por sala, chaves separadas), bloqueio após 5 senhas erradas, descarte do que não decifra; desfazer remoção de amigo; confirmação ao fechar com amigos assistindo; validação de IP; uso completo pelo teclado e leitor de tela; vídeo com teto de 8 Mbps e encode só com público
-- Desde 2026-10-05 (2.1.0, não lançada): ícone novo; Radmin aberto sozinho na bandeja (/minimized) quando está fechado na abertura do app
-- 225 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
+- Desde 2026-10-05 (2.1.0, não lançada): ícone novo; Radmin aberto sozinho na bandeja (/minimized) quando está fechado na abertura do app, e ligado (on-line) sozinho quando sobe off-line
+- 239 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
 
 ## Planejado, ainda não feito
 - Teste com amigo da 2.1.0: Radmin abrindo na bandeja e amigos online (ver auditorias/features/radmin-e-icone.md)
