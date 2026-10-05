@@ -24,13 +24,20 @@ Atualizado em: 2026-10-05
 ## Identidade
 - Dono do produto: Lintzz
 - Nome do produto: Stream Live
-- Id do app: AppId do Inno Setup em build/setup.iss (não mudar: quebraria a atualização do instalado)
+- Descrição: Transmissão de tela e áudio entre amigos na Radmin VPN, com várias lives em grade.
+- Id do app: `AppId=Stream Live` no build/setup.iss (explícito desde 2026-10-05, mesmo valor que valia por padrão; não mudar: instalaria uma segunda cópia)
+- Autor: Alexandre Lintz (Lintzz) · metadados no StreamLiveApp.csproj e no setup.iss
 - Licença: MIT
 
 ## Como rodar e gerar build
 - Tipo: .NET 8 WPF (net8.0-windows10.0.19041.0), SDK local em .dotnet/
-- Rodar (teste rápido): build Release + `StreamLiveApp.exe --demo` (skill `testar`)
-- Build: `/build-installer` → StreamLive_Setup.exe na raiz; release completa: `/publish-release`
+- Rodar (teste rápido): `.\.dotnet\dotnet.exe build StreamLive.sln -c Release` e abrir `src\StreamLiveAppin\Release
+et8.0-windows10.0.19041.0\StreamLiveApp.exe --demo` (espere ~5 s pelo MainWindowHandle)
+- Antes de abrir: conferir `Get-Process StreamLiveApp`. Instância aberta pode estar transmitindo para amigos — perguntar antes de encerrar. Sem `--demo`, duas instâncias brigam pela porta 8080
+- Logs: `%LOCALAPPDATA%\StreamLiveApp\error.log` e `audio_error.log`
+- Build (skill `/build`): `if (Test-Path publish_zip) { Remove-Item -Recurse -Force publish_zip }; .\.dotnet\dotnet.exe publish src\StreamLiveApp\StreamLiveApp.csproj -c Release -r win-x64 --self-contained true -o publish_zip; & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" build\setup.iss` → `StreamLive_Setup.exe` na raiz (copiar para builds/windows/ com a versão no nome)
+- Release: anexar um `.exe` e o `.sha256` dele: `(Get-FileHash <exe> -Algorithm SHA256).Hash.ToLower() + "  <nome do exe>" | Set-Content <exe>.sha256`
+- Versão atual: 1.0.38 (tag v1.0.38) · última entrega: v1.0.38, 2026-10-04, publicada no GitHub
 - Versão mora em: `<Version>` do StreamLiveApp.csproj (gera AppInfo.Version e build/version.iss)
 - Dependências conferidas em: 2026-10-05 — 0 vulnerabilidades depois da subida para SIPSorcery 10.0.17 + FFmpeg 8.1.2; NAudio e Vortice atrasados
 - Detectado em: 2026-10-05
@@ -61,3 +68,6 @@ Atualizado em: 2026-10-05
 - 2026-10-05: .gitignore ganhou exceções do projeto ao bloco do kit (build/ e .claude/lz/)
 - 2026-10-05: sem MCP do GitHub — o `gh` CLI já cobre o que as auditorias precisam
 - 2026-10-05: SIPSorcery 8→10 com FFmpeg 8.1.2 para fechar 2 Altas; não exigiu .NET 10. Transitivas System.Net.Http/RegularExpressions fixadas nas versões corrigidas
+- 2026-10-05: versionamento SemVer de verdade a partir da v1.0.38 (feat → menor, fix → correção), sem betas, release local com pergunta antes do push; política no CONVENCOES.md
+- 2026-10-05: skills antigas publish-release, build-installer e testar removidas; o projeto usa /build e /rodar do kit
+- 2026-10-05: nível de teste 3 — AppSmokeTests abre o .exe compilado em --demo

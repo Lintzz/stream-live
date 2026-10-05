@@ -10,8 +10,17 @@
 
 [Setup]
 SourceDir={#RepoRoot}
+; O AppId é o que o Windows usa para reconhecer uma instalação anterior e atualizar por cima.
+; Sem ele o Inno usa o AppName, e quem renomeasse o app passaria a ter duas cópias instaladas
+; lado a lado (o auto-update instalaria a segunda). O valor é o mesmo que já valia por padrão:
+; não mude, nem para acompanhar um rename.
+AppId=Stream Live
 AppName=Stream Live
 AppVersion={#AppVersion}
+AppPublisher=Lintzz
+AppPublisherURL=https://github.com/Lintzz/stream-live
+AppSupportURL=https://github.com/Lintzz/stream-live/issues
+AppUpdatesURL=https://github.com/Lintzz/stream-live/releases
 DefaultDirName={pf}\Stream Live
 DefaultGroupName=Stream Live
 UninstallDisplayIcon={app}\StreamLiveApp.exe

@@ -13,6 +13,12 @@
          do Inno Setup saem todos daqui (o build/version.iss é gerado no build). -->
     <AssemblyVersion>$(Version)</AssemblyVersion>
     <FileVersion>$(Version)</FileVersion>
+    <Product>Stream Live</Product>
+    <Description>Transmissão de tela e áudio entre amigos na Radmin VPN, com várias lives em grade.</Description>
+    <Authors>Alexandre Lintz</Authors>
+    <Company>Lintzz</Company>
+    <Copyright>Copyright (c) 2026 Lintzz · Licença MIT</Copyright>
+    <RepositoryUrl>https://github.com/Lintzz/stream-live</RepositoryUrl>
     <ApplicationIcon>Assets\app_icon.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>

@@ -24,7 +24,7 @@ O SDK fica em `.dotnet/` (fora do versionamento). Num clone novo essa pasta não
 .\.dotnet\dotnet.exe test StreamLive.sln --filter "FullyQualifiedName~DuplicationRecoveryTests"
 .\.dotnet\dotnet.exe test StreamLive.sln --filter "FullyQualifiedName~SignalingHandshakeTests.CorrectPasswordIsAccepted"
 
-# Publicar + gerar o instalador (skill /build-installer)
+# Publicar + gerar o instalador (é o comando que a skill /build usa)
 if (Test-Path "publish_zip") { Remove-Item -Recurse -Force "publish_zip" } ; & ".\.dotnet\dotnet.exe" publish src\StreamLiveApp\StreamLiveApp.csproj -c Release -r win-x64 --self-contained true -o "publish_zip" ; & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" build\setup.iss
 ```
 
@@ -42,8 +42,11 @@ H.264 — o `VideoEncoderFormatTests` pega isso.
 **Versão em um lugar só:** `<Version>` no `StreamLiveApp.csproj`. Dali saem o
 `AssemblyVersion`, o `AppInfo.Version` mostrado na UI e o `build/version.iss` (gerado pelo
 target `GenerateInnoSetupVersion`, consumido pelo `setup.iss`). Nunca edite `version.iss` nem
-repita a versão no XAML. O fluxo completo de release está na skill `/publish-release` — inclui
-publicar o `.sha256` junto do instalador, sem o qual o auto-update recusa a atualização.
+repita a versão no XAML. Release pela skill `/build` do kit (SemVer pelos Conventional Commits,
+`CHANGELOG.md`, tag anotada). A release precisa anexar **um** `.exe` e o `.sha256` dele
+(`<hash>  <arquivo>`): o `UpdateManager` pega o primeiro de cada tipo, e sem o `.sha256` o
+auto-update recusa a atualização. O `AppId` do `setup.iss` é fixo — mudar cria uma segunda
+instalação em vez de atualizar.
 
 O CI (`.github/workflows/ci.yml`) roda restore + build + test em `windows-latest`.
 
