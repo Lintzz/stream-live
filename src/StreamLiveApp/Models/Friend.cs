@@ -15,13 +15,13 @@ namespace StreamLiveApp.Models
         public string Name
         {
             get => _name;
-            set { _name = value; OnPropertyChanged(nameof(Name)); OnPropertyChanged(nameof(DisplayName)); }
+            set { _name = value; OnPropertyChanged(nameof(Name)); OnPropertyChanged(nameof(DisplayName)); OnPropertyChanged(nameof(AccessibleName)); }
         }
 
         public string Ip
         {
             get => _ip;
-            set { _ip = value; OnPropertyChanged(nameof(Ip)); OnPropertyChanged(nameof(DisplayName)); }
+            set { _ip = value; OnPropertyChanged(nameof(Ip)); OnPropertyChanged(nameof(DisplayName)); OnPropertyChanged(nameof(AccessibleName)); }
         }
 
         [JsonIgnore]
@@ -78,6 +78,17 @@ namespace StreamLiveApp.Models
         [JsonIgnore]
         public bool CanWatch => IsWatching || (IsOnline && IsStreaming);
 
+        /// <summary>
+        /// Nome do card para o leitor de tela. A bolinha colorida e o ícone de play não chegam a
+        /// quem não enxerga: o estado e a ação vão no nome.
+        /// </summary>
+        [JsonIgnore]
+        public string AccessibleName => IsWatching
+            ? $"{DisplayName}, assistindo. Enter para sair da live"
+            : IsOnline
+                ? (IsStreaming ? $"{DisplayName}, ao vivo. Enter para assistir" : $"{DisplayName}, online, sem transmitir")
+                : $"{DisplayName}, offline";
+
         /// <summary>Ordenação da sidebar: assistindo → em live → online → offline.</summary>
         [JsonIgnore]
         public int SortRank => IsWatching ? 0 : (IsStreaming ? 1 : (IsOnline ? 2 : 3));
@@ -88,6 +99,7 @@ namespace StreamLiveApp.Models
             OnPropertyChanged(nameof(StatusTooltip));
             OnPropertyChanged(nameof(SortRank));
             OnPropertyChanged(nameof(CanWatch));
+            OnPropertyChanged(nameof(AccessibleName));
         }
 
         public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;

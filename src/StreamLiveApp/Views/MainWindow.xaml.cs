@@ -693,7 +693,7 @@ namespace StreamLiveApp
 
         // ───────────────────────────── Assistir ─────────────────────────────
 
-        private async void FriendCard_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private async void FriendCard_Click(object sender, RoutedEventArgs e)
         {
             if (!(sender is FrameworkElement element) || !(element.DataContext is Friend friend)) return;
             await ToggleFriendSessionAsync(friend);

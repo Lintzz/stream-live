@@ -64,6 +64,29 @@
         </Style>
 
         <!-- Modern Button Style -->
+        <!-- Casca do card de amigo: só o conteúdo (o Border com o visual de sempre), mais o
+             foco do teclado e a mãozinha quando dá para clicar. -->
+        <Style x:Key="FriendCardButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter HorizontalAlignment="Stretch"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Cursor" Value="Arrow"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
         <Style x:Key="ModernButton" TargetType="Button">
             <Setter Property="Background" Value="#2D2D35"/>
             <Setter Property="Foreground" Value="#EEEEEE"/>
@@ -481,23 +504,24 @@
 
                     <Grid Grid.Row="1">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <ItemsControl x:Name="LstFriendsSidebar">
+                            <!-- Margem de 2 px: o contorno de foco do card passa da borda e era cortado. -->
+                            <ItemsControl x:Name="LstFriendsSidebar" Margin="2">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="#1E1E24" CornerRadius="6" Margin="0,0,0,6" Padding="8,7"
-                                                BorderThickness="1" BorderBrush="Transparent"
-                                                MouseLeftButtonUp="FriendCard_Click" ToolTip="{Binding StatusTooltip}">
+                                        <!-- Button, e não um Border com MouseLeftButtonUp: o card era a
+                                             única porta para assistir e não recebia foco nem Enter — sem
+                                             mouse, não havia como entrar numa live. Sem live para entrar
+                                             ele fica desabilitado (inerte como antes, e o leitor de tela
+                                             sabe disso); o nome diz estado e ação. -->
+                                        <Button Click="FriendCard_Click" IsEnabled="{Binding CanWatch}"
+                                                AutomationProperties.Name="{Binding AccessibleName}"
+                                                ToolTip="{Binding StatusTooltip}" ToolTipService.ShowOnDisabled="True"
+                                                Margin="0,0,0,6" Style="{StaticResource FriendCardButton}">
+                                        <Border Background="#1E1E24" CornerRadius="6" Padding="8,7"
+                                                BorderThickness="1" BorderBrush="Transparent">
                                             <Border.Style>
                                                 <Style TargetType="Border">
-                                                    <!-- Sem live para entrar, o card não é clicável: seta normal
-                                                         e sem hit test, em vez de abrir uma conexão inútil. -->
-                                                    <Setter Property="Cursor" Value="Arrow"/>
-                                                    <Setter Property="IsHitTestVisible" Value="False"/>
                                                     <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding CanWatch}" Value="True">
-                                                            <Setter Property="Cursor" Value="Hand"/>
-                                                            <Setter Property="IsHitTestVisible" Value="True"/>
-                                                        </DataTrigger>
                                                         <DataTrigger Binding="{Binding IsWatching}" Value="True">
                                                             <Setter Property="Background" Value="#16324A"/>
                                                             <Setter Property="BorderBrush" Value="#0094F2"/>
@@ -549,6 +573,7 @@
                                                 </TextBlock>
                                             </Grid>
                                         </Border>
+                                        </Button>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

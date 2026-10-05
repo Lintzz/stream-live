@@ -26,6 +26,33 @@ public class FriendStateTests
         Assert.Equal(expected, Make(online, streaming, watching).CanWatch);
     }
 
+    /// <summary>
+    /// O que o leitor de tela anuncia no card. A cor da bolinha e o ícone de play não chegam a
+    /// quem não enxerga: o estado e a ação precisam estar no nome.
+    /// </summary>
+    [Theory]
+    [InlineData(false, false, false, "Amigo, offline")]
+    [InlineData(true, false, false, "Amigo, online, sem transmitir")]
+    [InlineData(true, true, false, "Amigo, ao vivo. Enter para assistir")]
+    [InlineData(true, true, true, "Amigo, assistindo. Enter para sair da live")]
+    public void AccessibleNameSaysTheStateAndTheAction(bool online, bool streaming, bool watching, string expected)
+    {
+        Assert.Equal(expected, Make(online, streaming, watching).AccessibleName);
+    }
+
+    [Fact]
+    public void AccessibleNameIsRaisedWhenTheStateOrTheNameChanges()
+    {
+        var friend = Make();
+        var raised = new List<string?>();
+        friend.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        friend.IsStreaming = true;
+        friend.Name = "Outro";
+
+        Assert.Equal(2, raised.Count(p => p == nameof(Friend.AccessibleName)));
+    }
+
     [Fact]
     public void SortRankPutsTheUsefulCardsFirst()
     {

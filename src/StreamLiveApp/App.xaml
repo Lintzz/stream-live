@@ -4,6 +4,17 @@
              xmlns:local="clr-namespace:StreamLiveApp"
              StartupUri="Views/MainWindow.xaml">
     <Application.Resources>
-         
+        <!-- Foco do teclado: contorno azul de 2 px. O pontilhado padrão do Windows sumia no
+             tema escuro, e quem navega pelo Tab não via onde estava. -->
+        <Style x:Key="AppFocusVisual">
+            <Setter Property="Control.Template">
+                <Setter.Value>
+                    <ControlTemplate>
+                        <Rectangle Margin="-2" Stroke="#4FB3FF" StrokeThickness="2" RadiusX="7" RadiusY="7"
+                                   SnapsToDevicePixels="True"/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Application.Resources>
 </Application>
