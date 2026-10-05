@@ -62,12 +62,21 @@ public class SignalingHandshakeTests : IDisposable
         return msg!;
     }
 
-    private static Task AuthenticateAsync(ClientWebSocket ws, string password, string challenge)
-        => SendAsync(ws, new SignalingMessage
-        {
-            Type = "AUTH",
-            Data = CryptoHelper.ComputeAuthProof(CryptoHelper.DeriveKey(password), challenge)
-        });
+    /// <summary>Chaves da sala a partir do Data do AUTH_REQUIRED/AUTH_FAIL ("v2:salt:desafio").</summary>
+    private static CryptoHelper.RoomKeys KeysFrom(string password, string challengeData)
+    {
+        Assert.True(CryptoHelper.TryParseChallenge(challengeData, out var salt, out _), $"desafio fora do v2: {challengeData}");
+        return CryptoHelper.DeriveRoomKeys(password, salt);
+    }
+
+    private static string ProofFor(string password, string challengeData)
+    {
+        Assert.True(CryptoHelper.TryParseChallenge(challengeData, out var salt, out var challenge));
+        return CryptoHelper.FormatProof(CryptoHelper.ComputeAuthProof(CryptoHelper.DeriveRoomKeys(password, salt).Auth, challenge));
+    }
+
+    private static Task AuthenticateAsync(ClientWebSocket ws, string password, string challengeData)
+        => SendAsync(ws, new SignalingMessage { Type = "AUTH", Data = ProofFor(password, challengeData) });
 
     [Fact]
     public async Task RepeatedMessagesReuseTheSameChallenge()
@@ -151,7 +160,7 @@ public class SignalingHandshakeTests : IDisposable
         await SendAsync(ws, new SignalingMessage { Type = "CLIENT_CONNECTED" });
         var challenge = await ReceiveAsync(ws);
 
-        var proof = CryptoHelper.ComputeAuthProof(CryptoHelper.DeriveKey("errada"), challenge.Data!);
+        var proof = ProofFor("errada", challenge.Data!);
         await SendAsync(ws, new SignalingMessage { Type = "AUTH", Data = proof });
         await ReceiveAsync(ws); // AUTH_FAIL — o desafio queima aqui
 
@@ -209,7 +218,7 @@ public class SignalingHandshakeTests : IDisposable
         Assert.Equal("AUTH_OK", (await ReceiveAsync(ws)).Type);
 
         // Depois do AUTH_OK o viewer repete o CLIENT_CONNECTED, cifrado — é ele que registra.
-        var key = CryptoHelper.DeriveKey(Password);
+        var key = KeysFrom(Password, challenge.Data!).Enc;
         var hello = CryptoHelper.EncryptText(SignalingMessage.Serialize(new SignalingMessage { Type = "CLIENT_CONNECTED" }), key);
         await ws.SendAsync(Encoding.UTF8.GetBytes(hello), WebSocketMessageType.Text, true, CancellationToken.None);
         for (int i = 0; i < 50 && _server.ConnectedClientsCount == 0; i++) await Task.Delay(20);
@@ -243,6 +252,31 @@ public class SignalingHandshakeTests : IDisposable
         _server.BroadcastStreamStarted();
 
         Assert.Equal("STREAM_STARTED", await ReceiveTextAsync(ws));
+    }
+
+    [Fact]
+    public async Task OldAppProofIsToldToUpdateAndDoesNotCountAsWrongPassword()
+    {
+        string? outdatedIp = null;
+        _server.OnOutdatedClient += ip => outdatedIp = ip;
+
+        // Seis tentativas de um app v1 (prova sem "v2:"): passaria do limite de 5 se
+        // contasse como senha errada — e não é tentativa de adivinhar.
+        for (int i = 0; i < 6; i++)
+        {
+            using var old = await ConnectAsync();
+            await SendAsync(old, new SignalingMessage { Type = "CLIENT_CONNECTED" });
+            await ReceiveAsync(old); // AUTH_REQUIRED
+            await SendAsync(old, new SignalingMessage { Type = "AUTH", Data = "aGFzaC12MS1zZW0tcHJlZml4bw==" });
+            Assert.Equal("AUTH_OUTDATED", (await ReceiveAsync(old)).Type);
+        }
+        Assert.Equal("127.0.0.1", outdatedIp);
+
+        using var current = await ConnectAsync();
+        await SendAsync(current, new SignalingMessage { Type = "CLIENT_CONNECTED" });
+        var challenge = await ReceiveAsync(current);
+        await AuthenticateAsync(current, Password, challenge.Data!);
+        Assert.Equal("AUTH_OK", (await ReceiveAsync(current)).Type);
     }
 
     [Fact]
@@ -312,7 +346,7 @@ public class SignalingHandshakeTests : IDisposable
         await ReceiveAsync(ws); // AUTH_OK
 
         // Depois de autenticar, o viewer precisa se anunciar de novo — agora criptografado.
-        var key = CryptoHelper.DeriveKey(Password);
+        var key = KeysFrom(Password, challenge.Data!).Enc;
         var hello = SignalingMessage.Serialize(new SignalingMessage { Type = "CLIENT_CONNECTED" });
         var bytes = Encoding.UTF8.GetBytes(CryptoHelper.EncryptText(hello, key));
         await ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
@@ -336,11 +370,11 @@ public class SignalingHandshakeTests : IDisposable
         await SendAsync(ws, new SignalingMessage { Type = "CLIENT_CONNECTED" });
         var challenge = await ReceiveAsync(ws);
 
-        var key = CryptoHelper.DeriveKey(Password);
+        var key = KeysFrom(Password, challenge.Data!).Enc;
         var auth = SignalingMessage.Serialize(new SignalingMessage
         {
             Type = "AUTH",
-            Data = CryptoHelper.ComputeAuthProof(key, challenge.Data!)
+            Data = ProofFor(Password, challenge.Data!)
         });
         var bytes = Encoding.UTF8.GetBytes(CryptoHelper.EncryptText(auth, key));
         await ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
@@ -355,7 +389,11 @@ public class SignalingHandshakeTests : IDisposable
         // chega cifrado quando a sessão já está estabelecida, e continua sendo respondido.
         using var ws = await ConnectAsync();
 
-        var key = CryptoHelper.DeriveKey(Password);
+        // A chave depende do salt da sala, que vem no desafio.
+        await SendAsync(ws, new SignalingMessage { Type = "CLIENT_CONNECTED" });
+        var challenge = await ReceiveAsync(ws);
+
+        var key = KeysFrom(Password, challenge.Data!).Enc;
         var check = SignalingMessage.Serialize(new SignalingMessage { Type = "STATUS_CHECK" });
         var bytes = Encoding.UTF8.GetBytes(CryptoHelper.EncryptText(check, key));
         await ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);

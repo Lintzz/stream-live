@@ -13,31 +13,85 @@ namespace StreamLiveApp
     /// </summary>
     public static class CryptoHelper
     {
-        // Salt fixo da aplicação: a chave é derivada uma vez por sala e reaproveitada em
-        // todos os frames, então não dá para carregar um salt aleatório por mensagem.
-        // Com 200k iterações o ataque de dicionário fica caro mesmo com salt conhecido.
-        // O texto do salt é o nome antigo do app e ficou como estava de propósito: mudá-lo
-        // troca a chave derivada, e host atualizado com viewer desatualizado (ou o contrário)
-        // passaria a recusar toda senha de sala até os dois lados estarem na mesma versão.
-        private static readonly byte[] AppSalt = Encoding.UTF8.GetBytes("RadminStreamLive::room-key::v2");
+        // Protocolo de sala v2. A v1 (até a 1.0.38) usava um salt fixo do app para todas as
+        // salas e a mesma chave no HMAC do login e no AES: um dicionário pré-calculado uma
+        // vez servia contra qualquer sala, e quem capturasse um login testava senhas a custo
+        // de um HMAC. Agora o host sorteia um salt por sala (vai junto do desafio) e a
+        // chave-mestra se divide em duas, uma para cada uso. Muda o formato do AUTH — os dois
+        // lados precisam ser v2; ver FormatChallenge/TryParseProof.
+        private const string ProtocolTag = "v2";
         private const int Pbkdf2Iterations = 200_000;
+        private const int SaltSize = 16;
 
         private const int NonceSize = 12;  // AES-GCM padrão
         private const int TagSize = 16;
 
-        // PBKDF2 a 200k iterações custa ~100ms; o áudio chama isso ~50x/s.
-        // Sem cache o app trava, então a chave derivada fica guardada por senha.
-        private static readonly ConcurrentDictionary<string, byte[]> KeyCache = new();
+        private static readonly byte[] AuthInfo = Encoding.UTF8.GetBytes("StreamLive room auth v2");
+        private static readonly byte[] EncInfo = Encoding.UTF8.GetBytes("StreamLive room enc v2");
 
-        public static byte[] DeriveKey(string password)
+        // PBKDF2 a 200k iterações custa ~100ms; o áudio cifra ~50x/s.
+        // Sem cache o app trava, então as chaves ficam guardadas por senha + salt.
+        private static readonly ConcurrentDictionary<string, RoomKeys> KeyCache = new();
+
+        /// <summary>Chaves de uma sala: uma só prova a senha, a outra só cifra.</summary>
+        public sealed record RoomKeys(byte[] Auth, byte[] Enc);
+
+        /// <summary>Salt novo para uma sala, em base64 (é assim que ele viaja no desafio).</summary>
+        public static string NewSalt()
         {
-            return KeyCache.GetOrAdd(password ?? string.Empty, static pwd =>
-                Rfc2898DeriveBytes.Pbkdf2(
-                    Encoding.UTF8.GetBytes(pwd),
-                    AppSalt,
+            var salt = new byte[SaltSize];
+            RandomNumberGenerator.Fill(salt);
+            return Convert.ToBase64String(salt);
+        }
+
+        public static RoomKeys DeriveRoomKeys(string password, string saltB64)
+        {
+            return KeyCache.GetOrAdd((password ?? string.Empty) + "\n" + saltB64, _ =>
+            {
+                var master = Rfc2898DeriveBytes.Pbkdf2(
+                    Encoding.UTF8.GetBytes(password ?? string.Empty),
+                    Convert.FromBase64String(saltB64),
                     Pbkdf2Iterations,
                     HashAlgorithmName.SHA256,
-                    32));
+                    32);
+                return new RoomKeys(
+                    HKDF.Expand(HashAlgorithmName.SHA256, master, 32, AuthInfo),
+                    HKDF.Expand(HashAlgorithmName.SHA256, master, 32, EncInfo));
+            });
+        }
+
+        /// <summary>Data do AUTH_REQUIRED/AUTH_FAIL: "v2:&lt;salt&gt;:&lt;desafio&gt;".</summary>
+        public static string FormatChallenge(string saltB64, string challenge)
+            => $"{ProtocolTag}:{saltB64}:{challenge}";
+
+        /// <summary>
+        /// Lê o desafio do host. False quando o formato não é v2 — o host está numa versão
+        /// antiga, que manda só o desafio, sem salt.
+        /// </summary>
+        public static bool TryParseChallenge(string? data, out string saltB64, out string challenge)
+        {
+            saltB64 = challenge = string.Empty;
+            var parts = data?.Split(':');
+            if (parts is not { Length: 3 } || parts[0] != ProtocolTag) return false;
+            if (parts[1].Length == 0 || parts[2].Length == 0) return false;
+            try { Convert.FromBase64String(parts[1]); } catch (FormatException) { return false; }
+            saltB64 = parts[1];
+            challenge = parts[2];
+            return true;
+        }
+
+        /// <summary>Data do AUTH: "v2:&lt;prova&gt;".</summary>
+        public static string FormatProof(string proof) => $"{ProtocolTag}:{proof}";
+
+        /// <summary>False quando a prova não é v2 — o viewer está numa versão antiga.</summary>
+        public static bool TryParseProof(string? data, out string proof)
+        {
+            proof = string.Empty;
+            var prefix = ProtocolTag + ":";
+            if (data == null || !data.StartsWith(prefix, StringComparison.Ordinal) || data.Length == prefix.Length)
+                return false;
+            proof = data.Substring(prefix.Length);
+            return true;
         }
 
         public static string EncryptText(string plainText, byte[] key)
@@ -110,7 +164,7 @@ namespace StreamLiveApp
 
         /// <summary>
         /// Prova de que o viewer conhece a senha, sem mandar a senha no fio: HMAC do desafio
-        /// com a chave derivada. Antes o AUTH carregava a senha em texto claro sobre ws://,
+        /// com a chave de autenticação da sala (<see cref="RoomKeys.Auth"/>). Antes o AUTH carregava a senha em texto claro sobre ws://,
         /// então qualquer um na VPN a lia.
         /// </summary>
         public static string ComputeAuthProof(byte[] key, string challenge)

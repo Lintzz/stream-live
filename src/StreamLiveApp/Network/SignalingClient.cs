@@ -50,9 +50,10 @@ namespace StreamLiveApp
         public event Action OnReconnectFailed = delegate {};
         public event Action<int> OnLatencyUpdated = delegate {}; // milliseconds
 
-        public void EnableEncryption(string password)
+        /// <summary>Liga a cifra da sala, com o salt que veio no desafio do host.</summary>
+        public void EnableEncryption(string password, string saltB64)
         {
-            _encryptionKey = CryptoHelper.DeriveKey(password);
+            _encryptionKey = CryptoHelper.DeriveRoomKeys(password, saltB64).Enc;
         }
 
         /// <summary>

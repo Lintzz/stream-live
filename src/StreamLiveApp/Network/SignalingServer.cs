@@ -87,12 +87,16 @@ namespace StreamLiveApp
                 {
                     if (value == _roomPassword) return;
                     _roomPassword = value;
+                    // Salt novo a cada senha: é o que impede um dicionário pré-calculado de
+                    // servir contra todas as salas (ver CryptoHelper, protocolo v2).
+                    _roomSalt = value.Length == 0 ? string.Empty : CryptoHelper.NewSalt();
                     _authenticatedClients.Clear();
                     _challenges.Clear();
                 }
             }
         }
         private string _roomPassword = string.Empty;
+        private string _roomSalt = string.Empty;
 
         /// <summary>
         /// Quando ligado, só IPs da lista de amigos conseguem abrir conexão. É a proteção mais
@@ -100,7 +104,18 @@ namespace StreamLiveApp
         /// </summary>
         public bool RestrictToAllowedIps { get; set; } = true;
 
-        private byte[]? EncryptionKey => string.IsNullOrEmpty(RoomPassword) ? null : CryptoHelper.DeriveKey(RoomPassword);
+        private byte[]? EncryptionKey => RoomKeys?.Enc;
+
+        /// <summary>Chaves da sala em uso, ou null numa sala sem senha.</summary>
+        private CryptoHelper.RoomKeys? RoomKeys
+        {
+            get
+            {
+                string password, salt;
+                lock (_clientsLock) { password = _roomPassword; salt = _roomSalt; }
+                return password.Length == 0 ? null : CryptoHelper.DeriveRoomKeys(password, salt);
+            }
+        }
 
         public event Action<IWebSocketConnection, string>? OnMessageReceived;
         public event Action<IWebSocketConnection>? OnClientConnected;
@@ -108,6 +123,13 @@ namespace StreamLiveApp
 
         /// <summary>Conexão recusada por não estar na lista de amigos (IP normalizado).</summary>
         public event Action<string>? OnConnectionRejected;
+
+        /// <summary>
+        /// Um amigo tentou entrar na sala com senha usando uma versão antiga do app (protocolo
+        /// de sala v1). Não é senha errada: sem avisar, o host nunca saberia por que ele não
+        /// entra. (IP normalizado)
+        /// </summary>
+        public event Action<string>? OnOutdatedClient;
 
         /// <summary>
         /// Quantos viewers estão com o envio atrasado agora. Sem isto, o host só via o áudio
@@ -511,11 +533,18 @@ namespace StreamLiveApp
                     _challenges[socket.ConnectionInfo.Id] = challenge;
                 }
             }
-            SafeSend(socket, SignalingMessage.Serialize(new SignalingMessage { Type = "AUTH_REQUIRED", Data = challenge }));
+            SafeSend(socket, SignalingMessage.Serialize(new SignalingMessage { Type = "AUTH_REQUIRED", Data = FormatChallenge(challenge) }));
+        }
+
+        private string FormatChallenge(string challenge)
+        {
+            string salt;
+            lock (_clientsLock) { salt = _roomSalt; }
+            return CryptoHelper.FormatChallenge(salt, challenge);
         }
 
         /// <summary>Confere o HMAC do desafio contra o esperado, em tempo constante.</summary>
-        private void HandleAuth(IWebSocketConnection socket, string? proof)
+        private void HandleAuth(IWebSocketConnection socket, string? data)
         {
             string? challenge;
             lock (_clientsLock)
@@ -539,8 +568,21 @@ namespace StreamLiveApp
                 return;
             }
 
-            var key = CryptoHelper.DeriveKey(RoomPassword);
-            var expected = CryptoHelper.ComputeAuthProof(key, challenge);
+            if (!CryptoHelper.TryParseProof(data, out var proof))
+            {
+                // Prova sem o "v2:": é um app de antes do salt por sala. Não conta como senha
+                // errada (não é tentativa de adivinhar) — avisa os dois lados e encerra, senão
+                // o amigo ficaria vendo "senha incorreta" com a senha certa.
+                DiagnosticLog.Warn("Sinalizacao", $"Versao antiga do app tentou entrar na sala: {ip}");
+                SafeSend(socket, SignalingMessage.Serialize(new SignalingMessage { Type = "AUTH_OUTDATED" }));
+                OnOutdatedClient?.Invoke(ip);
+                try { socket.Close(); } catch { }
+                return;
+            }
+
+            var keys = RoomKeys;
+            if (keys == null) return; // a senha foi tirada no meio do handshake
+            var expected = CryptoHelper.ComputeAuthProof(keys.Auth, challenge);
 
             if (CryptoHelper.FixedTimeEquals(expected, proof))
             {
@@ -563,7 +605,7 @@ namespace StreamLiveApp
 
                 var next = CryptoHelper.NewChallenge();
                 lock (_clientsLock) { _challenges[socket.ConnectionInfo.Id] = next; }
-                SafeSend(socket, SignalingMessage.Serialize(new SignalingMessage { Type = "AUTH_FAIL", Data = next }));
+                SafeSend(socket, SignalingMessage.Serialize(new SignalingMessage { Type = "AUTH_FAIL", Data = FormatChallenge(next) }));
             }
         }
 

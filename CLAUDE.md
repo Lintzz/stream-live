@@ -83,8 +83,9 @@ Opus sem medir ponta a ponta.
 
 ### Handshake de sala (`SignalingServer` ↔ `ViewerSession`)
 
-`STATUS_CHECK`/`STATUS_RESPONSE` · `AUTH_REQUIRED`(desafio) → `AUTH`(HMAC) → `AUTH_OK`/`AUTH_FAIL`
-· `CLIENT_CONNECTED` · `offer`/`answer`/`ice` · `STREAM_STARTED`/`STREAM_STOPPED`/`SOURCE_CHANGED`.
+`STATUS_CHECK`/`STATUS_RESPONSE` · `AUTH_REQUIRED`(`v2:salt:desafio`) → `AUTH`(`v2:HMAC`) →
+`AUTH_OK`/`AUTH_FAIL`/`AUTH_LOCKED`/`AUTH_OUTDATED` · `CLIENT_CONNECTED` · `offer`/`answer`/`ice` ·
+`STREAM_STARTED`/`STREAM_STOPPED`/`SOURCE_CHANGED`.
 
 Detalhes que quebram fácil:
 - O host responde `AUTH_REQUIRED` a **cada** mensagem pré-autenticação (o `CLIENT_CONNECTED` e
@@ -100,9 +101,21 @@ Detalhes que quebram fácil:
   e a mesma recusa nega a entrada, sem precisar filtrar `RegisterViewer` nem o broadcast. A
   recusa por live privada **não** dispara `OnConnectionRejected`: o evento vira um aviso na
   barra de status, e cada não convidado sonda a cada 5 s.
-- A senha nunca trafega: `CryptoHelper.ComputeAuthProof` devolve o HMAC do desafio com a chave
-  PBKDF2 (200k iterações, salt fixo da aplicação, cache obrigatório — derivar custa ~100 ms e o
-  áudio chamaria isso ~50×/s). Payload da sala é AES-GCM, formato `[nonce 12][tag 16][cipher]`.
+- A senha nunca trafega. **Protocolo de sala v2** (desde a 2.0): o host sorteia um salt a cada
+  senha (`RoomPassword`), que vai no desafio; `CryptoHelper.DeriveRoomKeys` faz PBKDF2 (200k
+  iterações, cache obrigatório — derivar custa ~100 ms e o áudio cifra ~50×/s) e divide a
+  chave-mestra por HKDF em `Auth` (HMAC do desafio) e `Enc` (AES-GCM, formato
+  `[nonce 12][tag 16][cipher]`). A v1 tinha salt fixo do app e uma chave só. **v1 e v2 não
+  conversam em sala com senha** (sem senha, conversam): host v2 responde `AUTH_OUTDATED` e
+  avisa na barra de status; viewer v2 que recebe desafio sem `v2:` mostra "versão antiga".
+- Autenticar vale para a senha em uso: trocar ou zerar `RoomPassword` (o `AnnounceStop` zera)
+  desautentica todos. Por isso o `STREAM_STARTED` sai por `BroadcastStreamStarted`, em claro para
+  quem ainda não autenticou, e o viewer esquece a chave no `STREAM_STOPPED`. Com chave ativa, o
+  `SignalingClient` **descarta** o que não decifra, exceto o controle em claro (`AUTH_*`,
+  `STATUS_RESPONSE`, `PONG`) — usar o dado bruto anulava a autenticação do AES-GCM.
+- `AuthThrottle`: 5 senhas erradas por IP bloqueiam 60 s (`AUTH_LOCKED`), contadas por IP e não
+  por conexão. Mensagem de texto acima de 64 KB derruba a conexão. Com a lista de amigos
+  desligada, `ShouldAcceptConnection` ainda exige a faixa da Radmin (`26.0.0.0/8`).
 
 ### Captura de tela com fallback
 

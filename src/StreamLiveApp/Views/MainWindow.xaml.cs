@@ -185,6 +185,15 @@ namespace StreamLiveApp
                 System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                     ShowTransientStatus($"Conexão recusada: {ip} não está na sua lista de amigos."));
             };
+            _server.OnOutdatedClient += (ip) =>
+            {
+                System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    var friend = _friends?.FirstOrDefault(f =>
+                        string.Equals(SignalingServer.NormalizeIp(f.Ip), ip, StringComparison.OrdinalIgnoreCase));
+                    ShowTransientStatus($"{friend?.DisplayName ?? ip} tentou entrar com uma versão antiga do Stream Live e precisa atualizar.");
+                });
+            };
             _server.OnViewerCongested += (count) =>
             {
                 System.Windows.Application.Current.Dispatcher.InvokeAsync(() => ShowCongestion(count));

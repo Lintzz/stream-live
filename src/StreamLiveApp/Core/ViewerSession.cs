@@ -39,6 +39,7 @@ namespace StreamLiveApp
         private StreamManager? _streamManager;
         private string _password = string.Empty;
         private string _authChallenge = string.Empty;
+        private string _authSalt = string.Empty;
 
         // O host responde AUTH_REQUIRED para CADA mensagem enviada antes de autenticar — o
         // CLIENT_CONNECTED e um por candidato ICE. Sem esta trava, cada resposta abria um
@@ -347,7 +348,7 @@ namespace StreamLiveApp
                 var authMsg = SignalingMessage.Deserialize(message);
                 if (authMsg != null && authMsg.Type == "AUTH_REQUIRED")
                 {
-                    _authChallenge = authMsg.Data ?? string.Empty;
+                    if (!AcceptChallenge(authMsg.Data)) return;
 
                     if (!string.IsNullOrEmpty(_password))
                     {
@@ -364,7 +365,7 @@ namespace StreamLiveApp
                 {
                     // O host manda o desafio seguinte junto da recusa, para a nova tentativa
                     // já ter com o que responder.
-                    _authChallenge = authMsg.Data ?? string.Empty;
+                    if (!AcceptChallenge(authMsg.Data)) return;
                     _password = string.Empty;
                     SetHealth(ConnectionHealth.Conectando, "Senha incorreta");
                     PromptForPassword(previousAttemptFailed: true);
@@ -383,7 +384,7 @@ namespace StreamLiveApp
                 }
                 if (authMsg != null && authMsg.Type == "AUTH_OK")
                 {
-                    _client!.EnableEncryption(_password);
+                    _client!.EnableEncryption(_password, _authSalt);
                     SetHealth(ConnectionHealth.Conectando);
                     SendHello();
                     return;
@@ -512,13 +513,33 @@ namespace StreamLiveApp
         /// ser legível para o host. Mandando cifrado — o que acontecia em toda reconexão, porque
         /// a chave sobrevivia à queda —, host e viewer entravam num ping-pong sem fim.
         /// </summary>
+        /// <summary>
+        /// Guarda salt e desafio do host. False quando o desafio não é do protocolo v2: o
+        /// host está numa versão de antes do salt por sala, e a senha certa seria recusada —
+        /// em vez de "senha incorreta", diz o que fazer e para de tentar.
+        /// </summary>
+        private bool AcceptChallenge(string? data)
+        {
+            if (CryptoHelper.TryParseChallenge(data, out var salt, out var challenge))
+            {
+                _authSalt = salt;
+                _authChallenge = challenge;
+                return true;
+            }
+
+            _client?.SuppressReconnect();
+            SetHealth(ConnectionHealth.Perdida,
+                $"{FriendName} está com uma versão antiga do Stream Live. Peça para atualizar.");
+            return false;
+        }
+
         private void SendAuth()
         {
             if (string.IsNullOrEmpty(_authChallenge)) return;
 
-            var key = CryptoHelper.DeriveKey(_password);
-            var proof = CryptoHelper.ComputeAuthProof(key, _authChallenge);
-            var authMsg = new SignalingMessage { Type = "AUTH", Data = proof };
+            var keys = CryptoHelper.DeriveRoomKeys(_password, _authSalt);
+            var proof = CryptoHelper.ComputeAuthProof(keys.Auth, _authChallenge);
+            var authMsg = new SignalingMessage { Type = "AUTH", Data = CryptoHelper.FormatProof(proof) };
             _client?.SendPlain(SignalingMessage.Serialize(authMsg));
         }
 

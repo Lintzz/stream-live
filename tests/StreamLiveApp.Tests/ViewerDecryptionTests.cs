@@ -12,7 +12,8 @@ namespace StreamLiveApp.Tests;
 /// </summary>
 public class ViewerDecryptionTests
 {
-    private static readonly byte[] Key = CryptoHelper.DeriveKey("sala-secreta");
+    private static readonly string Salt = CryptoHelper.NewSalt();
+    private static readonly byte[] Key = CryptoHelper.DeriveRoomKeys("sala-secreta", Salt).Enc;
 
     private static string Json(string type, string? data = null)
         => SignalingMessage.Serialize(new SignalingMessage { Type = type, Data = data });
@@ -49,7 +50,7 @@ public class ViewerDecryptionTests
     {
         Assert.Null(SignalingClient.ResolveIncomingText(Json("offer", "sdp-injetado"), Key));
         Assert.Null(SignalingClient.ResolveIncomingText("STREAM_STOPPED", Key));
-        Assert.Null(SignalingClient.ResolveIncomingText(CryptoHelper.EncryptText(Json("offer"), CryptoHelper.DeriveKey("outra")), Key));
+        Assert.Null(SignalingClient.ResolveIncomingText(CryptoHelper.EncryptText(Json("offer"), CryptoHelper.DeriveRoomKeys("outra", Salt).Enc), Key));
         Assert.Null(SignalingClient.ResolveIncomingText("lixo", Key));
     }
 

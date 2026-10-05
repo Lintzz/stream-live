@@ -185,9 +185,10 @@ reserva automática para máquinas onde a duplicação não está disponível (R
 
 Pontos que valem para quem for usar ou adaptar o projeto:
 
-- **Senha fraca pode ser quebrada offline.** O desafio e o HMAC do login passam pela VPN, e o
-  salt do PBKDF2 é fixo no app. Com senha longa isso fica impraticável. Salt por sala e chaves
-  separadas para o HMAC e para o AES seriam a próxima evolução.
+- **Senha fraca pode ser quebrada offline.** O desafio e o HMAC do login passam pela VPN. Desde a
+  2.0 cada sala tem salt próprio e chaves separadas para o login e para a cifra, então quem
+  capturar um login precisa pagar o PBKDF2 (200 mil iterações) a cada senha testada, sala por
+  sala — mas uma senha curta ou de dicionário ainda cai. Use senha longa.
 - **O servidor escuta em todas as interfaces (`0.0.0.0:8080`).** A lista de amigos por IP vem
   ligada e é o que protege a porta. Com ela desligada, entra qualquer máquina da Radmin
   (`26.0.0.0/8`) — a rede local e quem alcançar a porta pelo roteador continuam recusados —,
