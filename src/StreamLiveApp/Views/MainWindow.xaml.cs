@@ -527,7 +527,9 @@ namespace StreamLiveApp
         {
             if (!(CboWindows.SelectedItem is CaptureSource selectedSource))
             {
-                System.Windows.MessageBox.Show("Selecione uma tela para transmitir.");
+                System.Windows.MessageBox.Show(this, "Escolha qual tela transmitir na lista ao lado do botão.",
+                    "Transmitir", MessageBoxButton.OK, MessageBoxImage.Information);
+                CboWindows.Focus();
                 return;
             }
 
@@ -726,7 +728,13 @@ namespace StreamLiveApp
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show($"Erro ao conectar com {friend.DisplayName}: {ex.Message}");
+                // O texto da exceção (de socket, de WebRTC) não diz nada a quem só quer assistir;
+                // ele vai para o diagnóstico, e a tela fica com o que dá para fazer.
+                DiagnosticLog.Error("Viewer", $"Falha ao conectar com {friend.DisplayName}", ex);
+                System.Windows.MessageBox.Show(this,
+                    $"Não foi possível conectar à live de {friend.DisplayName}.\n\n" +
+                    "Confira se a Radmin VPN está aberta dos dois lados e tente de novo.",
+                    "Assistir", MessageBoxButton.OK, MessageBoxImage.Warning);
                 CloseSession(session);
             }
         }
