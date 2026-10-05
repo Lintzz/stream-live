@@ -1240,15 +1240,24 @@ namespace StreamLiveApp
             handle.IsHitTestVisible = VideoControlsBar.IsHitTestVisible;
         }
 
-        private void BtnUpdate_Click(object sender, RoutedEventArgs e)
+        private async void BtnUpdate_Click(object sender, RoutedEventArgs e)
         {
-            if (!string.IsNullOrEmpty(_downloadUrl))
-            {
-                BtnUpdate.Content = "Baixando...";
-                BtnUpdate.IsEnabled = false;
-                BtnDismissUpdate.IsEnabled = false;
-                _ = UpdateManager.DownloadAndInstallUpdateAsync(_downloadUrl, _downloadChecksumUrl);
-            }
+            if (string.IsNullOrEmpty(_downloadUrl)) return;
+
+            // Largura travada durante o download: o texto muda a cada ponto percentual, e o
+            // botão não deve ficar pulando de tamanho.
+            BtnUpdate.MinWidth = BtnUpdate.ActualWidth;
+            BtnUpdate.Content = "Baixando...";
+            BtnUpdate.IsEnabled = false;
+            BtnDismissUpdate.IsEnabled = false;
+
+            var progress = new Progress<int>(percent => BtnUpdate.Content = $"Baixando {percent}%");
+            bool started = await UpdateManager.DownloadAndInstallUpdateAsync(_downloadUrl, _downloadChecksumUrl, progress);
+            if (started) return; // o app está fechando para o instalador rodar
+
+            BtnUpdate.Content = "Tentar de novo";
+            BtnUpdate.IsEnabled = true;
+            BtnDismissUpdate.IsEnabled = true;
         }
 
         private void BtnDismissUpdate_Click(object sender, RoutedEventArgs e)

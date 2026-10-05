@@ -106,7 +106,15 @@ namespace StreamLiveApp
         /// Antes o .exe era executado direto: um download corrompido (ou trocado) rodava com
         /// privilégio de instalação sem nenhuma checagem.
         /// </summary>
-        public static async Task DownloadAndInstallUpdateAsync(string downloadUrl, string? checksumUrl)
+        /// <summary>
+        /// Baixa, confere e executa o instalador. Devolve false quando a atualização não
+        /// seguiu (falha de rede, hash que não confere, usuário recusou) — o motivo já foi
+        /// mostrado, e quem chama devolve o botão para tentar de novo. Antes não havia
+        /// retorno, e o botão ficava em "Baixando..." até fechar o app.
+        /// </summary>
+        /// <param name="progress">Porcentagem baixada, quando o servidor informa o tamanho.</param>
+        public static async Task<bool> DownloadAndInstallUpdateAsync(string downloadUrl, string? checksumUrl,
+            IProgress<int>? progress = null)
         {
             string? fullPath = null;
             try
@@ -118,15 +126,31 @@ namespace StreamLiveApp
                 string fileName = $"StreamLive_Setup_Update_{Guid.NewGuid().ToString().Substring(0, 8)}.exe";
                 fullPath = Path.Combine(tempPath, fileName);
 
+                long? total = response.Content.Headers.ContentLength;
                 using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                using (var body = await response.Content.ReadAsStreamAsync())
                 {
-                    await response.Content.CopyToAsync(fs);
+                    // O instalador passa de 100 MB: sem progresso, "Baixando..." parado por
+                    // minutos parecia travado.
+                    var buffer = new byte[81920];
+                    long done = 0;
+                    int lastPercent = -1, read;
+                    while ((read = await body.ReadAsync(buffer)) > 0)
+                    {
+                        await fs.WriteAsync(buffer.AsMemory(0, read));
+                        done += read;
+                        if (total > 0)
+                        {
+                            int percent = (int)(done * 100 / total.Value);
+                            if (percent != lastPercent) progress?.Report(lastPercent = percent);
+                        }
+                    }
                 }
 
                 if (!await VerifyDownloadAsync(fullPath, checksumUrl))
                 {
                     TryDelete(fullPath);
-                    return;
+                    return false;
                 }
 
                 // Executa o instalador (sem modo silencioso, usuário avança normalmente)
@@ -141,11 +165,17 @@ namespace StreamLiveApp
                 {
                     System.Windows.Application.Current.Shutdown();
                 });
+                return true;
             }
             catch (Exception ex)
             {
                 if (fullPath != null) TryDelete(fullPath);
-                System.Windows.MessageBox.Show($"Erro ao baixar a atualização: {ex.Message}", "Erro de Atualização", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                DiagnosticLog.Error("Update", "Falha ao baixar a atualização", ex);
+                System.Windows.MessageBox.Show(
+                    "Não foi possível baixar a atualização. Confira a internet e tente de novo.\n\n" +
+                    "Se continuar, baixe o instalador direto nas releases do GitHub.",
+                    "Atualização", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                return false;
             }
         }
 
