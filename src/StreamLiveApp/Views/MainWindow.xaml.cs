@@ -443,8 +443,8 @@ namespace StreamLiveApp
         {
             if (_server == null) return;
 
-            var ips = _server.ConnectedClientIps;
-            int count = ips.Count;
+            var names = CurrentViewerNames();
+            int count = names.Count;
             ViewerCountText.Text = count == 1 ? "1 assistindo" : $"{count} assistindo";
 
             if (count == 0)
@@ -453,15 +453,23 @@ namespace StreamLiveApp
                 return;
             }
 
+            ViewerCountPanel.ToolTip = "Assistindo agora:\n• " + string.Join("\n• ", names);
+        }
+
+        /// <summary>Quem está assistindo a sua live agora, pelo apelido salvo (ou IP).</summary>
+        private List<string> CurrentViewerNames()
+        {
+            // O --demo finge dois amigos assistindo (ver StartDemoBroadcast).
+            if (DemoMode.IsEnabled) return _isBroadcasting ? new List<string> { "Bruno", "Diego" } : new List<string>();
+            if (_server == null) return new List<string>();
+
             // IP conhecido vira o apelido salvo; desconhecido aparece como IP mesmo.
-            var names = ips.Select(ip =>
+            return _server.ConnectedClientIps.Select(ip =>
             {
                 var friend = _friends?.FirstOrDefault(f =>
                     string.Equals(SignalingServer.NormalizeIp(f.Ip), ip, StringComparison.OrdinalIgnoreCase));
                 return friend != null ? friend.DisplayName : ip;
-            });
-
-            ViewerCountPanel.ToolTip = "Assistindo agora:\n• " + string.Join("\n• ", names);
+            }).ToList();
         }
 
         // ─────────────────────── Viewer com a conexão ruim (lado host) ───────────────────────
@@ -1477,6 +1485,36 @@ namespace StreamLiveApp
 
         [DllImport("kernel32.dll")]
         private static extern bool TerminateProcess(IntPtr process, uint exitCode);
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            // Fechar no meio da live derrubava quem estava assistindo sem aviso nenhum. Só
+            // pergunta quando há gente do outro lado — live sem público fecha direto — e nunca
+            // quando é a atualização fechando o app para o instalador rodar.
+            if (_isBroadcasting && !UpdateManager.IsInstallingUpdate)
+            {
+                var names = CurrentViewerNames();
+                if (names.Count > 0)
+                {
+                    string who = names.Count switch
+                    {
+                        1 => $"{names[0]} está assistindo",
+                        <= 3 => $"{string.Join(", ", names.Take(names.Count - 1))} e {names[^1]} estão assistindo",
+                        _ => $"{string.Join(", ", names.Take(2))} e mais {names.Count - 2} estão assistindo"
+                    };
+                    bool confirmed = ConfirmDialog.Ask(this,
+                        names.Count == 1 ? "Encerrar a live para 1 amigo?" : $"Encerrar a live para {names.Count} amigos?",
+                        $"{who}. Fechar o Stream Live encerra a transmissão para todos.",
+                        "Encerrar e fechar");
+                    if (!confirmed)
+                    {
+                        e.Cancel = true;
+                        return;
+                    }
+                }
+            }
+            base.OnClosing(e);
+        }
 
         protected override void OnClosed(EventArgs e)
         {

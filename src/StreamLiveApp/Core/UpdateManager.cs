@@ -113,6 +113,9 @@ namespace StreamLiveApp
         /// retorno, e o botão ficava em "Baixando..." até fechar o app.
         /// </summary>
         /// <param name="progress">Porcentagem baixada, quando o servidor informa o tamanho.</param>
+        /// <summary>O app está fechando para o instalador rodar: não pergunta nada no caminho.</summary>
+        public static bool IsInstallingUpdate { get; private set; }
+
         public static async Task<bool> DownloadAndInstallUpdateAsync(string downloadUrl, string? checksumUrl,
             IProgress<int>? progress = null)
         {
@@ -161,6 +164,7 @@ namespace StreamLiveApp
                 });
 
                 // Fecha a aplicação atual para o instalador poder sobrescrever os arquivos
+                IsInstallingUpdate = true;
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
                     System.Windows.Application.Current.Shutdown();
