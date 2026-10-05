@@ -230,6 +230,48 @@ public class VpnStatusServiceTests
     /// o mesmo argumento do início automático do Windows, e sobe direto na bandeja. A janela
     /// tem que existir (com ela fechada os amigos aparecem offline), só não pode ser vista.
     /// </summary>
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(0, false)]
+    [InlineData(null, null)]
+    [InlineData("1", null)]
+    public void ParsePowerOn_ReadsTheRadminRegistryValue(object? value, bool? expected)
+    {
+        Assert.Equal(expected, RadminPowerService.ParsePowerOn(value));
+    }
+
+    [Fact]
+    public void ShouldTurnOn_OnlyWhenKnownToBeOff()
+    {
+        // Nunca desliga: o clique é um liga/desliga, e clicar com o Radmin on-line o derrubaria.
+        Assert.True(RadminPowerService.ShouldTurnOn(false));
+        Assert.False(RadminPowerService.ShouldTurnOn(true));
+        Assert.False(RadminPowerService.ShouldTurnOn(null));
+    }
+
+    [Theory]
+    // Itens do menu da bandeja do Radmin 2.1.1 (pt_BR e inglês). Clicar no errado desligaria.
+    [InlineData("Ficar on-line", true)]
+    [InlineData("Go online", true)]
+    [InlineData("Ficar off-line", false)]
+    [InlineData("Go offline", false)]
+    [InlineData("Abrir", false)]
+    [InlineData("Sair", false)]
+    public void IsGoOnlineItem_RecognizesOnlyTheTurnOnItem(string name, bool expected)
+    {
+        Assert.Equal(expected, RadminPowerService.IsGoOnlineItem(name));
+    }
+
+    [Theory]
+    // Medido no Radmin 2.1.1 a 96 DPI: janela de 336 px, botão de energia centrado em (51, 105).
+    [InlineData(336, 51, 105)]
+    [InlineData(504, 77, 158)]   // 150% de escala
+    [InlineData(0, 51, 105)]     // janela sem tamanho válido: usa a medida de referência
+    public void PowerButtonPoint_ScalesWithTheWindowWidth(int width, int x, int y)
+    {
+        Assert.Equal((x, y), RadminPowerService.PowerButtonPoint(width));
+    }
+
     [Fact]
     public void BuildStartInfo_OpensRadminStraightToTheTray()
     {

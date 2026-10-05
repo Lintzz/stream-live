@@ -180,18 +180,47 @@ namespace StreamLiveApp
         /// </summary>
         private void CheckVpnOnStartup()
         {
-            if (VpnStatusService.IsRunning()) return;
+            if (VpnStatusService.IsRunning())
+            {
+                _ = EnsureRadminOnlineAsync(justStarted: false);
+                return;
+            }
 
             if (VpnStatusService.TryStart())
             {
                 DiagnosticLog.Info("Radmin", "Radmin VPN estava fechado; aberto na bandeja pelo app");
                 ShowTransientStatus("Radmin VPN aberto na bandeja. Seus amigos aparecem em alguns segundos.");
+                _ = EnsureRadminOnlineAsync(justStarted: true);
                 return;
             }
 
             var dialog = VpnWarningDialog.Create(VpnStatusService.FindExecutable());
             dialog.Owner = this;
             dialog.ShowDialog();
+        }
+
+        /// <summary>
+        /// Aberto não basta: o Radmin volta no estado em que foi fechado, e fechar a janela
+        /// dele o desliga — então quase sempre ele sobe off-line. Liga sem mostrar nada
+        /// (<see cref="RadminPowerService"/>); só avisa quando não conseguiu.
+        /// </summary>
+        private async Task EnsureRadminOnlineAsync(bool justStarted)
+        {
+            RadminPowerResult result;
+            try
+            {
+                result = await RadminPowerService.EnsureOnlineAsync(justStarted);
+            }
+            catch (Exception ex)
+            {
+                DiagnosticLog.Error("Radmin", "Deixar o Radmin on-line falhou", ex);
+                result = RadminPowerResult.Failed;
+            }
+
+            if (result == RadminPowerResult.TurnedOn)
+                ShowTransientStatus("Radmin VPN ficou on-line. Seus amigos aparecem em alguns segundos.");
+            else if (result == RadminPowerResult.Failed)
+                ShowTransientStatus("O Radmin VPN está off-line. Clique com o botão direito no ícone dele, perto do relógio, e em \"Ficar on-line\".");
         }
 
         /// <summary>

@@ -161,6 +161,15 @@ A janela **precisa** rodar: testado em 2026-10-05, com ela fechada o serviço `R
 adaptador 26.x continuam de pé, mas os amigos aparecem offline. Por isso a checagem é pelo
 processo da janela, não pelo serviço.
 
+Aberto também não basta: o Radmin volta no estado em que foi fechado e quase sempre sobe
+**off-line**. `RadminPowerService` lê o `PowerOn` do registro (só leitura; usuário comum não
+grava ali) e, se for 0, liga sem mostrar a janela: clique postado no botão de energia da
+janela escondida (só acerta se ela já foi mostrada na sessão — aberto com `/minimized`, nunca
+foi) e, como reserva, o "Ficar on-line" do menu da bandeja, aberto pela mensagem do ícone do Qt
+(`WM_APP+101` + `WM_CONTEXTMENU`) — pisca ~180 ms no canto do relógio. O `Invoke` da automação
+não fecha o menu: o Esc depois é obrigatório. Descartados por teste: `TogglePattern` (muda só a
+aparência), janela transparente/região vazia (o Qt desfaz ou aparece mesmo assim).
+
 Entrar numa rede pelo app (UI Automation na janela do Radmin) chegou a ser feito e foi
 **removido** por decisão do dono: entrar na rede é manual, pelo próprio Radmin. O Radmin não tem
 linha de comando nem API para isso; o que foi medido (seletores, armadilhas) está em
