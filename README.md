@@ -17,13 +17,15 @@
 > **Não o utilize com estranhos ou pessoas não confiáveis.** O projeto não foi auditado profissionalmente.
 >
 > O que existe hoje de proteção:
-> * **Lista de permissão por IP** (ligada por padrão): só quem está na sua lista de amigos consegue abrir conexão. Pode ser desligada em *Configurações*.
-> * **Senha de sala opcional** com autenticação por desafio-resposta — a senha nunca trafega na rede; o viewer devolve um HMAC do desafio.
-> * **Criptografia AES-GCM** do conteúdo da sala **quando ela tem senha**, com chave derivada por PBKDF2 (200k iterações). **Sem senha, áudio e sinalização trafegam sem criptografia** (PCM cru sobre `ws://`).
+> * **Lista de permissão por IP** (ligada por padrão): só quem está na sua lista de amigos consegue abrir conexão. Pode ser desligada em *Configurações* — aí entra qualquer máquina da Radmin VPN, nunca a rede local ou a internet.
+> * **Senha de sala opcional** com autenticação por desafio-resposta — a senha nunca trafega na rede; o viewer devolve um HMAC do desafio. Cada sala tem seu próprio salt, e 5 senhas erradas bloqueiam aquele computador por 1 minuto.
+> * **Criptografia AES-GCM** do conteúdo da sala **quando ela tem senha**, com chave derivada por PBKDF2 (200k iterações); quem assiste descarta tudo que não vem cifrado com a chave da sala. **Sem senha, áudio e sinalização trafegam sem criptografia** (PCM cru sobre `ws://`).
 >
 > O que **não** existe: TLS no canal de sinalização, certificados, ou qualquer defesa contra alguém que já tenha acesso privilegiado à sua rede virtual.
 >
 > **Use uma senha longa.** Quem conseguir observar o tráfego da VPN vê o desafio e a resposta do login e pode testar senhas offline; uma senha curta cai rápido. Veja também [Riscos conhecidos](#-riscos-conhecidos).
+>
+> **Atualize junto com seus amigos.** Desde a 2.0 a sala com senha usa um protocolo novo: quem está na 1.x não entra na sala com senha de quem está na 2.0 (e vice-versa) — o app avisa qual dos dois precisa atualizar. Salas sem senha continuam funcionando entre versões.
 
 ---
 
