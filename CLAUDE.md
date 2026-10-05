@@ -32,9 +32,12 @@ if (Test-Path "publish_zip") { Remove-Item -Recurse -Force "publish_zip" } ; & "
 servidor na 8080 e sem gravar `friends.json`/`settings.json`. É o que gera o GIF e os prints de
 `docs/images/` — regrave por ele quando a UI mudar, nunca com a lista de amigos real.
 
-**Git LFS é obrigatório.** As DLLs do FFmpeg em `src/StreamLiveApp/FFmpegLibs/` (~145 MB)
+**Git LFS é obrigatório.** As DLLs do FFmpeg em `src/StreamLiveApp/FFmpegLibs/` (~250 MB)
 vivem no LFS. Sem `git lfs`, o working tree recebe ponteiros de texto e o build falha ao
-carregar o FFmpeg (`git lfs pull` conserta um clone já feito).
+carregar o FFmpeg (`git lfs pull` conserta um clone já feito). São o build *full shared* do
+gyan.dev, e a versão é presa à do `FFmpeg.AutoGen` que o `SIPSorceryMedia.FFmpeg` traz (hoje
+8.1 → FFmpeg 8.1.x, `avcodec-62`). Subir o SIPSorcery sem trocar as DLLs junto quebra o encoder
+H.264 — o `VideoEncoderFormatTests` pega isso.
 
 **Versão em um lugar só:** `<Version>` no `StreamLiveApp.csproj`. Dali saem o
 `AssemblyVersion`, o `AppInfo.Version` mostrado na UI e o `build/version.iss` (gerado pelo
@@ -143,8 +146,8 @@ outro lugar reintroduz o bug: quem criasse a pasta nova primeiro cancelaria a mi
   `ShouldReemit`, `CopyRect`, `NormalizeIp`) e alcançada pelo `InternalsVisibleTo` para
   `StreamLiveApp.Tests`. Prefira esse formato a testar através da UI ou da captura real.
 - Testes são xUnit em `tests/StreamLiveApp.Tests/`; o `SignalingHandshakeTests` sobe um
-  `SignalingServer` real em porta livre. O `NoWarn NU1903` (advisories do SIPSorcery 8.0.23) é
-  proposital — só sai ao migrar para .NET 10.
+  `SignalingServer` real em porta livre. Os `PackageReference` de `System.Net.Http` e
+  `System.Text.RegularExpressions` são remendo de transitivas vulneráveis (motivo no csproj).
 
 <!-- lz:inicio v0.23.0 — gerado pelo kit lz; edições dentro deste bloco são sobrescritas na atualização -->
 # Padrões do projeto (kit lz)

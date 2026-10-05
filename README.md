@@ -213,7 +213,7 @@ Distribuído sob a licença MIT. Veja [`LICENSE`](LICENSE).
 
 ## 📦 Peso do repositório
 
-As DLLs do FFmpeg em `src/StreamLiveApp/FFmpegLibs/` somam ~145 MB e **já vivem no Git LFS**,
+As DLLs do FFmpeg em `src/StreamLiveApp/FFmpegLibs/` somam ~250 MB e **já vivem no Git LFS**,
 histórico incluído — o pack do repositório tem menos de 200 KB.
 
 Por isso, **é preciso ter o `git-lfs` instalado antes de clonar**. Sem ele o working tree recebe

@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using SIPSorcery.Net;
 using SIPSorcery.Media;
 using SIPSorceryMedia.Abstractions;
-using SIPSorceryMedia.Encoders;
 using SIPSorceryMedia.FFmpeg;
 using System.Diagnostics;
 using System.Drawing;
