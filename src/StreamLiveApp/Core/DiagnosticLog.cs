@@ -231,8 +231,9 @@ namespace StreamLiveApp
 
         /// <summary>
         /// Arquivos que entram no relatório de diagnóstico. É uma lista fechada de propósito:
-        /// <c>friends.json</c> e <c>settings.json</c> ficam na mesma pasta e carregam os IPs
-        /// dos amigos e a senha da sala — nada disso pode sair da máquina do usuário.
+        /// <c>friends.json</c> e <c>settings.json</c> ficam na mesma pasta: o primeiro carrega
+        /// os IPs e apelidos dos amigos, e nada disso deve sair da máquina do usuário. (A senha
+        /// da sala não é gravada em disco — vive só na memória da sessão.)
         /// </summary>
         public static readonly string[] ReportFiles =
         {
