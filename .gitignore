@@ -125,3 +125,6 @@ obj/
 /build/version.iss
 # As regras do kit (FLUXO, DETECCAO, DOCUMENTACAO) são lidas pelas skills e precisam ir junto no clone.
 !.claude/lz/
+# Chaves e certificados soltos (o bloco do kit cobre .pfx/.p12/.jks, não estes).
+*.pem
+*.key
