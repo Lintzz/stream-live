@@ -414,7 +414,7 @@
                 </Border>
 
                 <!-- Botão da lista de amigos: fica sobre o vídeo e some junto com os controles -->
-                <Button x:Name="SidebarHandle" HorizontalAlignment="Left" VerticalAlignment="Center"
+                <Button x:Name="SidebarHandle" IsTabStop="False" HorizontalAlignment="Left" VerticalAlignment="Center"
                         Panel.ZIndex="21" Opacity="0" IsHitTestVisible="False"
                         Background="#D91E1E24" BorderBrush="#4D4D57" BorderThickness="0,1,1,1"
                         Padding="4,16" Cursor="Hand" ToolTip="Mostrar amigos" AutomationProperties.Name="Mostrar amigos"

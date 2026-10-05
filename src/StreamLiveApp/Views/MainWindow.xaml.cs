@@ -916,6 +916,10 @@ namespace StreamLiveApp
             // Sem live os controles do player não têm o que controlar — e, só com opacidade
             // zero, continuavam no Tab: o foco sumia em botões invisíveis.
             VideoControlsBar.Visibility = hasSessions ? Visibility.Visible : Visibility.Collapsed;
+
+            // Sem live a lista de amigos fica sempre aberta e o puxador não tem o que fazer:
+            // fora do Tab, senão o foco cai num botão invisível.
+            SidebarHandle.IsTabStop = hasSessions;
             TopPanelHandle.Visibility = hasSessions ? Visibility.Visible : Visibility.Collapsed;
             if (hasSessions) SyncFloatingHandle(TopPanelHandle);
             else SetTopPanelOpen(true);
