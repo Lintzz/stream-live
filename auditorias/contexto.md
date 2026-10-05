@@ -71,3 +71,5 @@ et8.0-windows10.0.19041.0\StreamLiveApp.exe --demo` (espere ~5 s pelo MainWindow
 - 2026-10-05: versionamento SemVer de verdade a partir da v1.0.38 (feat → menor, fix → correção), sem betas, release local com pergunta antes do push; política no CONVENCOES.md
 - 2026-10-05: skills antigas publish-release, build-installer e testar removidas; o projeto usa /build e /rodar do kit
 - 2026-10-05: nível de teste 3 — AppSmokeTests abre o .exe compilado em --demo
+- 2026-10-05: protocolo de sala v2 (salt por sala, chaves Auth/Enc) — quebra compatibilidade com a 1.0.38 em sala com senha; próxima release é 2.0.0
+- 2026-10-05: instalador sem assinatura Authenticode por decisão (sem custo); mitigação: 2FA no GitHub
