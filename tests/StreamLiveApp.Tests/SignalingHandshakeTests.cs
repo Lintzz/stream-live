@@ -161,6 +161,38 @@ public class SignalingHandshakeTests : IDisposable
     }
 
     [Fact]
+    public async Task FiveWrongPasswordsLockTheIpEvenAcrossReconnections()
+    {
+        // Quatro erros numa conexão, o quinto noutra: o limite é do IP, senão reconectar
+        // zeraria a contagem.
+        using (var ws = await ConnectAsync())
+        {
+            await SendAsync(ws, new SignalingMessage { Type = "CLIENT_CONNECTED" });
+            var challenge = (await ReceiveAsync(ws)).Data!;
+            for (int i = 0; i < 4; i++)
+            {
+                await AuthenticateAsync(ws, "errada", challenge);
+                var fail = await ReceiveAsync(ws);
+                Assert.Equal("AUTH_FAIL", fail.Type);
+                challenge = fail.Data!;
+            }
+        }
+
+        using var second = await ConnectAsync();
+        await SendAsync(second, new SignalingMessage { Type = "CLIENT_CONNECTED" });
+        var next = (await ReceiveAsync(second)).Data!;
+        await AuthenticateAsync(second, "errada", next);
+        Assert.Equal("AUTH_FAIL", (await ReceiveAsync(second)).Type);
+
+        // Bloqueado: nem a senha certa passa até o bloqueio expirar.
+        using var third = await ConnectAsync();
+        await SendAsync(third, new SignalingMessage { Type = "CLIENT_CONNECTED" });
+        var last = (await ReceiveAsync(third)).Data!;
+        await AuthenticateAsync(third, Password, last);
+        Assert.Equal("AUTH_LOCKED", (await ReceiveAsync(third)).Type);
+    }
+
+    [Fact]
     public async Task StatusCheckAnswersWithoutAuthentication()
     {
         using var ws = await ConnectAsync();

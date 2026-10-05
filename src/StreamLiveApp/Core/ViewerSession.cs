@@ -370,6 +370,17 @@ namespace StreamLiveApp
                     PromptForPassword(previousAttemptFailed: true);
                     return;
                 }
+                if (authMsg != null && authMsg.Type == "AUTH_LOCKED")
+                {
+                    // O host bloqueou este IP por excesso de senhas erradas e derruba a conexão.
+                    // Sem suprimir a reconexão, o cliente voltaria na hora, levaria outro
+                    // bloqueio e o modal de senha piscaria sem explicação.
+                    _client?.SuppressReconnect();
+                    _password = string.Empty;
+                    SetHealth(ConnectionHealth.Perdida,
+                        "Muitas tentativas de senha. Espere 1 minuto e clique em Reconectar.");
+                    return;
+                }
                 if (authMsg != null && authMsg.Type == "AUTH_OK")
                 {
                     _client!.EnableEncryption(_password);

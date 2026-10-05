@@ -14,6 +14,7 @@ namespace StreamLiveApp
         private readonly List<IWebSocketConnection> _clients = new List<IWebSocketConnection>();
         private readonly object _clientsLock = new object();
         private readonly HashSet<Guid> _authenticatedClients = new HashSet<Guid>();
+        private readonly AuthThrottle _authThrottle = new();
 
         // Desafio pendente por conexão. A senha nunca vai no fio: o viewer prova que a
         // conhece devolvendo o HMAC deste nonce.
@@ -480,6 +481,15 @@ namespace StreamLiveApp
                 _challenges.TryGetValue(socket.ConnectionInfo.Id, out challenge);
             }
 
+            var ip = NormalizeIp(socket.ConnectionInfo.ClientIpAddress);
+            if (_authThrottle.IsLocked(ip))
+            {
+                // Nem confere a prova: com o IP bloqueado, a senha certa também espera.
+                SafeSend(socket, SignalingMessage.Serialize(new SignalingMessage { Type = "AUTH_LOCKED" }));
+                try { socket.Close(); } catch { }
+                return;
+            }
+
             if (string.IsNullOrEmpty(challenge))
             {
                 // Cliente tentou autenticar sem ter recebido desafio: manda um e espera de novo.
@@ -497,6 +507,7 @@ namespace StreamLiveApp
                     _authenticatedClients.Add(socket.ConnectionInfo.Id);
                     _challenges.Remove(socket.ConnectionInfo.Id);
                 }
+                _authThrottle.RecordSuccess(ip);
                 DiagnosticLog.Info("Sinalizacao", $"Senha aceita: {NormalizeIp(socket.ConnectionInfo.ClientIpAddress)}");
                 SafeSend(socket, SignalingMessage.Serialize(new SignalingMessage { Type = "AUTH_OK" }));
             }
@@ -505,6 +516,8 @@ namespace StreamLiveApp
                 // Desafio queima a cada tentativa (impede replay do mesmo HMAC), e o novo vai
                 // junto do AUTH_FAIL — senão o viewer ficaria sem desafio para tentar de novo.
                 DiagnosticLog.Warn("Sinalizacao", $"Senha incorreta: {NormalizeIp(socket.ConnectionInfo.ClientIpAddress)}");
+                if (_authThrottle.RecordFailure(ip))
+                    DiagnosticLog.Warn("Sinalizacao", $"Tentativas de senha bloqueadas por 60 s: {ip}");
 
                 var next = CryptoHelper.NewChallenge();
                 lock (_clientsLock) { _challenges[socket.ConnectionInfo.Id] = next; }
