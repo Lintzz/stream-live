@@ -62,7 +62,11 @@ namespace StreamLiveApp
 
         // Ligada enquanto as preferências salvas são aplicadas aos controles, para a carga
         // não disparar uma regravação do arquivo que acabou de ser lido.
-        private bool _loadingSettings;
+        // Começa travado: o IsChecked="True" do ChkFriendsOnly no XAML dispara o Checked dentro
+        // do InitializeComponent, antes do Load, e o PersistSettings regravava o settings.json
+        // com os valores de fábrica — apagando, por exemplo, o "não fechar o Radmin" escolhido
+        // na última vez. Só destrava depois que o arquivo foi lido (ApplyLoadedSettings).
+        private bool _loadingSettings = true;
         private bool _isBroadcasting;
         private string _hostVideoStats = string.Empty;
         private string _hostAudioStats = string.Empty;
