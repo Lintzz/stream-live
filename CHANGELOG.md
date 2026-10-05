@@ -16,6 +16,11 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 - O leitor de tela (Narrador, NVDA) anuncia o nome de todos os botões, o estado de cada amigo ("Ana, ao vivo"), os campos dos formulários e as mensagens que mudam sozinhas.
 - Contorno de foco bem visível e textos com mais contraste; o azul dos botões ficou um pouco mais escuro para o texto branco ser legível.
 
+### Desempenho
+- Transmitir sem ninguém assistindo não pesa mais no PC: o vídeo só é codificado quando alguém entra.
+- O vídeo tem teto de 8 Mbps por amigo, com a mesma qualidade de antes: a imagem não trava mais por excesso de dados quando a internet de quem transmite é mais limitada.
+- A prévia da sua transmissão só gasta processamento quando está aberta.
+
 ### Alterado
 - Senha da sala mais resistente: cada sala tem sua própria proteção, e descobrir a senha de uma não adianta nada para as outras.
 - O instalador passa a mostrar autor e links do projeto em "Aplicativos instalados" do Windows.

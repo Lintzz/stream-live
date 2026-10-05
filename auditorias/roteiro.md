@@ -2,16 +2,16 @@
 Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · Atualizado em: 2026-10-05
 
 ## Próximo
-- [ ] `/11-performance` — 1080p, fps, CPU/GPU, áudio e latência em live real
+- [ ] `/12-pre-lancamento` — antes da próxima release (live real com amigo; regravar prints do README)
 
 ## Depois
-- [ ] `/12-pre-lancamento` — antes da próxima release
 - [ ] `/14-revisao-geral` — conferência final e código morto
 
 ## Concluídas
 - [x] `/00-diagnosticar` — 05/10
 - [x] `/01-ambiente` — 05/10
 - [x] `/02-configurar` — 05/10 (SemVer, CHANGELOG, AppId fixo, smoke do .exe)
+- [x] `/11-performance` — 05/10 (sem encode sem público; teto 8 Mbps com 60 fps declarados; prévia só visível)
 - [x] `/10-acessibilidade` — 05/10 (12 itens + avisos que nunca apareciam; tudo pelo teclado)
 - [x] `/07-seguranca` — 05/10 (A,B,C,D,F,G corrigidos; protocolo v2 → próxima release 2.0.0; E aceito)
 - [x] `/06-interface` — 05/10 (7 itens corrigidos; ConfirmDialog e Desfazer como padrão)

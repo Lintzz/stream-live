@@ -126,6 +126,17 @@ sozinha — `DecideDuplicationAction` decide entre usar / esperar / recriar / de
 O quadro sai em **BGRA cru**; a conversão de cor é do swscale, e `VideoEncoderFormatTests` trava
 essa decisão contra upgrades do SIPSorcery.
 
+### Encoder de vídeo: taxa declarada e teto
+
+`StreamManager.CreateH264Encoder` usa libx264 `ultrafast`+`zerolatency` com CRF 23 e teto pelo VBV
+(`x264-params` `vbv-maxrate`=`MaxVideoKbps` 8000, `vbv-bufsize` metade). Dois detalhes do SIPSorcery
+que quebram isso em silêncio: o `EncodeVideo` inicializa o encoder dizendo 30 fps (e o `ForceIdr`
+o recria a cada keyframe), então `PrepareEncoder` declara `TargetFps` (60) antes de **cada** quadro;
+e as opções vão para o `priv_data` do x264, onde `maxrate`/`bufsize` não existem. O
+`EncoderBitrateTests` trava as duas coisas. Sem nenhum peer conectado o host **não codifica**
+(`ShouldEncode`); o fps mostrado e o aviso de saúde (`DecideHealthWarning`) olham a captura.
+Medições e alternativas descartadas (AMF, decode por GPU) em `auditorias/11-performance.md`.
+
 ### Áudio: exclusão por processo
 
 `AudioCapturer` usa `WasapiLoopbackCapture` para o sistema inteiro, ou `ProcessAudioCapturer`

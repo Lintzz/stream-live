@@ -13,7 +13,7 @@ Atualizado em: 2026-10-05
 
 ## Ambiente
 - MCPs conectados e testados: Context7 (2026-10-05, resolveu SIPSorcery e devolveu exemplos de RTCPeerConnection.SendVideo)
-- Ressalva do Context7: a doc do SIPSorcery é do master (linha 10.x); o projeto usa 8.0.23 — API específica da 8.0 se confirma pelo XML/IntelliSense do pacote instalado
+- Ressalva do Context7: a doc do SIPSorcery é do master; o projeto usa 10.0.17 — detalhe de API se confirma por reflexão no pacote instalado ou na fonte (src/FFmpegVideoEncoder.cs no GitHub)
 - GitHub: sem MCP, coberto pelo `gh` CLI (conta Lintzz, escopos repo + workflow): releases, Actions, visibilidade
 - MCPs que ajudariam e não estão conectados: nenhum necessário (sem banco, hospedagem web ou pagamento)
 - Acessos que tenho: repositório e releases via `gh`; não há painel, DNS nem banco
@@ -31,8 +31,7 @@ Atualizado em: 2026-10-05
 
 ## Como rodar e gerar build
 - Tipo: .NET 8 WPF (net8.0-windows10.0.19041.0), SDK local em .dotnet/
-- Rodar (teste rápido): `.\.dotnet\dotnet.exe build StreamLive.sln -c Release` e abrir `src\StreamLiveAppin\Release
-et8.0-windows10.0.19041.0\StreamLiveApp.exe --demo` (espere ~5 s pelo MainWindowHandle)
+- Rodar (teste rápido): `.\.dotnet\dotnet.exe build StreamLive.sln -c Release` e abrir `src\StreamLiveApp\bin\Release\net8.0-windows10.0.19041.0\StreamLiveApp.exe --demo` (espere ~5 s pelo MainWindowHandle)
 - Antes de abrir: conferir `Get-Process StreamLiveApp`. Instância aberta pode estar transmitindo para amigos — perguntar antes de encerrar. Sem `--demo`, duas instâncias brigam pela porta 8080
 - Logs: `%LOCALAPPDATA%\StreamLiveApp\error.log` e `audio_error.log`
 - Build (skill `/build`): `if (Test-Path publish_zip) { Remove-Item -Recurse -Force publish_zip }; .\.dotnet\dotnet.exe publish src\StreamLiveApp\StreamLiveApp.csproj -c Release -r win-x64 --self-contained true -o publish_zip; & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" build\setup.iss` → `StreamLive_Setup.exe` na raiz (copiar para builds/windows/ com a versão no nome)
@@ -55,11 +54,10 @@ et8.0-windows10.0.19041.0\StreamLiveApp.exe --demo` (espere ~5 s pelo MainWindow
 - Lista de amigos com status online, sala com senha (HMAC + AES-GCM), live privada com convidados
 - Aviso de Radmin VPN fechada, diagnóstico embutido, modo demonstração
 - Auto-update verificado por SHA-256
-- 153 testes xUnit + CI no GitHub Actions (últimas 3 execuções verdes)
+- 224 testes xUnit + CI no GitHub Actions
 
 ## Planejado, ainda não feito
 - Trocar o ícone do app
-- Medir e afinar desempenho: 1080p com som bom e fps estável sem pesar no PC
 
 ## Decisões
 - Áudio em PCM pelo WebSocket, não Opus — o Opus (v1.0.18–21) nunca funcionou em campo (detalhe no CLAUDE.md)
@@ -73,3 +71,4 @@ et8.0-windows10.0.19041.0\StreamLiveApp.exe --demo` (espere ~5 s pelo MainWindow
 - 2026-10-05: nível de teste 3 — AppSmokeTests abre o .exe compilado em --demo
 - 2026-10-05: protocolo de sala v2 (salt por sala, chaves Auth/Enc) — quebra compatibilidade com a 1.0.38 em sala com senha; próxima release é 2.0.0
 - 2026-10-05: instalador sem assinatura Authenticode por decisão (sem custo); mitigação: 2FA no GitHub
+- 2026-10-05: vídeo com teto de 8 Mbps (CRF 23 + VBV) e 60 fps declarados; sem encode sem público. AMF e decode por GPU medidos e descartados por ora
