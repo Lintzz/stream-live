@@ -11,3 +11,4 @@ src/StreamLiveApp/FFmpegLibs/*.dll filter=lfs diff=lfs merge=lfs -text
 *.ico binary
 *.png binary
 *.gif binary
+.githooks/* text eol=lf

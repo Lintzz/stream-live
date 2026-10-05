@@ -1,0 +1,30 @@
+{
+  "versao": "0.23.0",
+  "instaladoEm": "2026-10-05T03:03:37.075Z",
+  "skills": [
+    "00-diagnosticar",
+    "00-planejar",
+    "01-ambiente",
+    "02-configurar",
+    "03-desenvolver",
+    "04-git",
+    "05-conversao",
+    "06-interface",
+    "07-seguranca",
+    "08-lgpd",
+    "09-seo",
+    "10-acessibilidade",
+    "11-performance",
+    "12-pre-lancamento",
+    "13-dominio",
+    "14-revisao-geral",
+    "banco",
+    "build",
+    "dependencias",
+    "limpeza",
+    "nova-feature",
+    "projeto-limpo",
+    "rodar",
+    "testes"
+  ]
+}

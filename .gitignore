@@ -32,3 +32,96 @@ desktop.ini
 
 # Gerado pelo build a partir de <Version> no .csproj
 /build/version.iss
+
+# lz-kit (início) — gerado pelo instalador. Edite FORA deste bloco: o que estiver aqui dentro é sobrescrito na atualização.
+
+# Dependências
+node_modules/
+.pnp/
+.pnp.*
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Saídas de build
+dist/
+build/
+out/
+.next/
+.nuxt/
+.output/
+.svelte-kit/
+.astro/
+.vite/
+coverage/
+builds/
+*.tsbuildinfo
+
+# Mobile e nativo
+android/build/
+android/app/build/
+android/.gradle/
+android/.cxx/
+ios/Pods/
+ios/build/
+.expo/
+.expo-shared/
+*.apk
+*.aab
+*.ipa
+
+# Chaves de assinatura
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.mobileprovision
+
+# Ambiente e segredos
+.env
+.env.*
+!.env.example
+
+# Artefatos de teste
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+playwright/.cache/
+.maestro/tests-output/
+capturas/
+*.trace.zip
+
+# Cache e logs
+.cache/
+.turbo/
+.parcel-cache/
+.eslintcache
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Sistema e editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+*.swp
+.vscode/*
+!.vscode/extensions.json
+
+# .NET
+bin/
+obj/
+*.user
+# lz-kit (fim)
+
+# Exceções do projeto ao bloco do lz-kit (ficam depois dele para valer por cima, e fora dele para
+# não serem apagadas quando o kit atualizar).
+# build/ guarda o setup.iss do instalador: o "build/" genérico do kit esconderia arquivos novos ali.
+!/build/
+/build/version.iss
+# As regras do kit (FLUXO, DETECCAO, DOCUMENTACAO) são lidas pelas skills e precisam ir junto no clone.
+!.claude/lz/

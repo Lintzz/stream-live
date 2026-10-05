@@ -1,0 +1,44 @@
+#!/bin/sh
+# kit lz — exige Conventional Commits na primeira linha da mensagem.
+# Emergência: git commit --no-verify pula esta checagem.
+
+arquivo="$1"
+linha=$(grep -v '^#' "$arquivo" | head -n 1 | tr -d '\r')
+
+# Mensagens geradas pelo próprio Git passam.
+case "$linha" in
+  "Merge "*|"Revert "*|"fixup! "*|"squash! "*|"amend! "*|"Initial commit"*) exit 0 ;;
+esac
+
+tipos='feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert'
+padrao="^($tipos)(\([a-z0-9._/-]+\))?!?: [^ ].*"
+
+if ! printf '%s\n' "$linha" | grep -Eq "$padrao"; then
+  cat >&2 <<MSG
+
+  ✖ Commit recusado: a mensagem não segue o padrão Conventional Commits.
+
+    Recebido:  $linha
+
+    Formato:   tipo(escopo opcional): descrição
+    Tipos:     feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+    Quebra:    feat!: ... ou fix(api)!: ...
+
+    Exemplos:
+      feat: adiciona página de agendamento
+      fix(formulario): corrige máscara do telefone
+      chore: atualiza dependências
+
+MSG
+  exit 1
+fi
+
+if [ "${#linha}" -gt 100 ]; then
+  echo "" >&2
+  echo "  ✖ Commit recusado: a primeira linha tem ${#linha} caracteres (máximo 100)." >&2
+  echo "    Deixe o título curto e explique o resto no corpo, depois de uma linha em branco." >&2
+  echo "" >&2
+  exit 1
+fi
+
+exit 0

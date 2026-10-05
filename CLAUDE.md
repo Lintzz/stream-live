@@ -145,3 +145,55 @@ outro lugar reintroduz o bug: quem criasse a pasta nova primeiro cancelaria a mi
 - Testes são xUnit em `tests/StreamLiveApp.Tests/`; o `SignalingHandshakeTests` sobe um
   `SignalingServer` real em porta livre. O `NoWarn NU1903` (advisories do SIPSorcery 8.0.23) é
   proposital — só sai ao migrar para .NET 10.
+
+<!-- lz:inicio v0.23.0 — gerado pelo kit lz; edições dentro deste bloco são sobrescritas na atualização -->
+# Padrões do projeto (kit lz)
+
+Este projeto usa o kit lz. As regras abaixo valem em **toda** tarefa, não só quando uma skill é chamada.
+
+## Commits
+
+- **Todo commit segue Conventional Commits**: `tipo(escopo opcional): descrição`.
+- Tipos: `feat` (algo novo), `fix` (correção), `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`. Mudança que quebra algo leva `!`: `feat!: remove login por senha`.
+- Descrição em português, no imperativo, começando em minúscula, sem ponto final, com até ~70 caracteres. Detalhes vão no corpo, depois de uma linha em branco.
+- Um commit por mudança lógica. Não junte correção e funcionalidade nova no mesmo commit — o tipo do commit decide a próxima versão.
+- O hook `.githooks/commit-msg` recusa commit fora do padrão. Se ele recusar, corrija a mensagem; não use `--no-verify` sem o usuário pedir.
+- Nunca commite `.env`, chaves, keystore, certificados nem a pasta `builds/`.
+- Não faça `push` sem o usuário pedir.
+
+## Antes de trabalhar
+
+- Contexto do projeto: `auditorias/contexto.md`. Leia antes de perguntar ao usuário algo que pode estar lá.
+- Padrões de código, pastas, nomes e versionamento: `CONVENCOES.md`, se existir. Código novo segue esse arquivo.
+- Plano e escopo: `PLANO.md`, se existir. Se ele tiver a lista "Não vai ter", aquilo foi cortado de propósito: não construa sem o usuário pedir.
+- Passo a passo do projeto: `auditorias/roteiro.md`. Toda skill do fluxo marca a própria linha ao terminar e fecha a resposta dizendo o comando da próxima etapa.
+
+## Padrões que você carrega sozinho, sem o usuário pedir
+
+Estes **não são comandos**. São padrões obrigatórios. Quando a situação abaixo acontecer, leia o arquivo indicado **antes de escrever o código** e siga. Não pergunte se deve carregar, não espere o usuário digitar o comando, e não peça aprovação para seguir o padrão — só para as mudanças em si.
+
+| Quando | Leia |
+|---|---|
+| Vai escrever código com uma biblioteca ou framework — confirme a API **da versão instalada** antes | `.claude/lz/DOCUMENTACAO.md` |
+| Terminou de mexer em qualquer coisa, corrigiu um bug, ou um fluxo novo ficou pronto | `.claude/skills/testes/SKILL.md` |
+| A instalação de pacotes reportou vulnerabilidade, entrou uma dependência nova, ou a checagem diária do `rodar` achou Crítica ou Alta em produção | `.claude/skills/dependencias/SKILL.md` |
+| Vai criar ou alterar tabela, coleção, schema, migration, query, índice, policy de RLS ou regra do Firestore | `.claude/skills/banco/SKILL.md` |
+| Vai construir ou alterar tela, lista, formulário, botão ou componente interativo | `.claude/skills/06-interface/SKILL.md` |
+| A mudança traz um serviço externo novo (banco, autenticação, pagamento, e-mail, hospedagem) | `.claude/skills/01-ambiente/SKILL.md`, em modo preparar |
+
+Resumo do padrão de testes, que vale em toda tarefa: **mexeu, verifica.** Rode a verificação rápida do projeto (o comando está na seção Testes do `CONVENCOES.md`) ao fim de cada mudança, e não siga escrevendo código em cima de vermelho. Bug encontrado ganha **primeiro** a verificação que falha, depois a correção — teste escrito depois da correção passa por construção e não prova nada. Fluxo novo pronto ganha caso na verificação. Se a verificação falhar, o culpado é o código até prova em contrário: nunca enfraqueça a asserção nem atualize snapshot para o teste passar. Projeto sem verificação nenhuma: rode o projeto como a skill `rodar` faz; e se o nível do projeto pede teste (2 ou 3, pelo perfil), carregue `testes` em modo montar e proponha o mínimo junto com a tarefa — não espere o usuário pedir.
+
+Resumo do padrão de documentação, que vale em toda tarefa: o que você sabe de cor é de uma versão qualquer, o projeto usa uma versão específica. Consulte o MCP do serviço quando houver, senão o Context7 (`resolve-library-id` → `query-docs`), senão o site oficial. Não precisa consultar para JS/CSS puro nem para algo que o projeto já faz em outro arquivo — nesse caso copie o padrão de lá. Nunca invente API: se não achou, diga, escreva do jeito conservador e marque `TODO(doc)`.
+
+Ao adicionar algo novo a um projeto já auditado, use a skill `nova-feature` — essa sim é um comando, porque envolve planejar e aprovar antes.
+
+## Skills do kit, em ordem
+
+`00-planejar` → `01-ambiente` → `02-configurar` → `03-desenvolver` → `04-git` → `05-conversao` → `06-interface` → `07-seguranca` → `08-lgpd` → `09-seo` → `10-acessibilidade` → `11-performance` → `12-pre-lancamento` → `13-dominio` → `14-revisao-geral` → `projeto-limpo` (só se for entregar a um cliente)
+
+Projeto que já existe começa por `00-diagnosticar` (no lugar do `00-planejar`), pula o `03-desenvolver`, segue o roteiro que ele recomendar e termina na `14-revisao-geral`.
+
+Comandos a qualquer momento: `rodar`, `build`, `nova-feature`, `limpeza` e `projeto-limpo`. As skills `testes`, `dependencias` e `banco` não são comandos: são os padrões da tabela acima, que você carrega sozinho.
+
+Regras completas do fluxo: `.claude/lz/FLUXO.md`.
+<!-- lz:fim -->
