@@ -170,6 +170,12 @@ foi) e, como reserva, o "Ficar on-line" do menu da bandeja, aberto pela mensagem
 não fecha o menu: o Esc depois é obrigatório. Descartados por teste: `TogglePattern` (muda só a
 aparência), janela transparente/região vazia (o Qt desfaz ou aparece mesmo assim).
 
+Ao fechar, com o Radmin aberto, a confirmação (`ConfirmDialog` com caixa de opção) oferece
+"Fechar o Radmin VPN também" — marcada de fábrica, lembrada em `CloseRadminOnExit`; quem usa o
+Radmin para jogar desmarca. O Radmin sai pelo "Sair" do menu da bandeja (encerrar o processo
+deixa ícone fantasma) e, no reserva, é encerrado, com teto de 3 s. A trava `_loadingSettings`
+começa ligada: o `Checked` do XAML dispara antes do `Load` e regravava os valores de fábrica.
+
 Entrar numa rede pelo app (UI Automation na janela do Radmin) chegou a ser feito e foi
 **removido** por decisão do dono: entrar na rede é manual, pelo próprio Radmin. O Radmin não tem
 linha de comando nem API para isso; o que foi medido (seletores, armadilhas) está em
