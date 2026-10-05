@@ -3,13 +3,13 @@ Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · A
 
 ## Próximo
 - [ ] Teste de live real com um amigo, já na 2.0.0 publicada (roteiro em auditorias/12-pre-lancamento.md)
-- [ ] Teste manual da aba Radmin com rede real (auditorias/features/radmin-e-icone.md), depois `/build` da 2.1.0
+- [ ] Teste com um amigo da build de teste (Radmin abrindo na bandeja), depois `/build` de entrega da 2.1.0
 
 ## Depois
 - [ ] `/14-revisao-geral` de novo, depois da release, para fechar em 🟢
 
 ## Concluídas
-- [x] `/nova-feature` — 05/10 (ícone novo + Radmin pela tela do app; 258 testes)
+- [x] `/nova-feature` — 05/10 (ícone novo + Radmin abre na bandeja com o app; entrar na rede pelo app removido; 225 testes)
 - [x] `/00-diagnosticar` — 05/10
 - [x] `/01-ambiente` — 05/10
 - [x] `/02-configurar` — 05/10 (SemVer, CHANGELOG, AppId fixo, smoke do .exe)

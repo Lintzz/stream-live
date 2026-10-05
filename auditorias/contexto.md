@@ -46,7 +46,6 @@ Atualizado em: 2026-10-05
 ## Stack e serviços
 - SIPSorcery 10.0.17 + FFmpeg 8.1.2 gyan.dev full shared (WebRTC/H.264) — gratuito
 - Fleck / Websocket.Client — sinalização e áudio PCM, porta 8080
-- System.ServiceProcess.ServiceController 10.0.12 — status do serviço RvControlSvc
 - NAudio + ApplicationLoopback.dll — captura de áudio com exclusão do Discord
 - Vortice (DXGI) com fallback GDI — captura de tela
 - API de releases do GitHub — auto-update
@@ -58,11 +57,11 @@ Atualizado em: 2026-10-05
 - Aviso de Radmin VPN fechada, diagnóstico embutido, modo demonstração
 - Auto-update verificado por SHA-256
 - Desde a 2.0 (ainda não lançada): protocolo de sala v2 (salt por sala, chaves separadas), bloqueio após 5 senhas erradas, descarte do que não decifra; desfazer remoção de amigo; confirmação ao fechar com amigos assistindo; validação de IP; uso completo pelo teclado e leitor de tela; vídeo com teto de 8 Mbps e encode só com público
-- Desde 2026-10-05 (2.1.0, não lançada): ícone novo; aba "Radmin VPN" que entra numa rede do Radmin por UI Automation, com rede lembrada por DPAPI e limpeza ao fechar
-- 258 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
+- Desde 2026-10-05 (2.1.0, não lançada): ícone novo; Radmin aberto sozinho na bandeja (/minimized) quando está fechado na abertura do app
+- 225 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
 
 ## Planejado, ainda não feito
-- Teste manual da aba Radmin com rede real antes da 2.1.0 (ver auditorias/features/radmin-e-icone.md)
+- Teste com amigo da 2.1.0: Radmin abrindo na bandeja e amigos online (ver auditorias/features/radmin-e-icone.md)
 
 ## Radmin VPN (levantado em 2026-10-05, Radmin 2.1.1 / 2.1.4951.1 nesta máquina)
 - Serviço é `RvControlSvc` (Auto), não `RvpnService`; a GUI é `RvRvpnGui.exe`, manifest `asInvoker` (UI Automation funciona sem admin)
@@ -70,6 +69,7 @@ Atualizado em: 2026-10-05
 - Linha de comando: só `/minimized` (o autostart usa). Nenhum argumento, protocolo de URL ou API para entrar em rede
 - GUI em Qt Widgets: todo controle tem `AutomationId` = caminho de objectName, igual em qualquer idioma. Diálogo de entrar: `MainWindow.DlgJoinNetwork` (campos `...tab_private.LENetName`/`LEPassword`, botões `...joinPushButton`/`cancelPushButton`); menu `Rede` → `Conectar à rede`; lista de redes em `...CNetworkWidget.NetworkWidget.NetworkName`; liga/desliga em `...userInfoWidget.BPower` (TogglePattern)
 - 2026-10-05, decisões da nova-feature: "Desconectar" = desligar pelo BPower (não sair da rede); serviço parado → botão que pede UAC só no clique; tela = aba "Radmin VPN" nas Configurações + atalho no aviso de abertura; teste real só com rede inexistente aleatória
+- 2026-10-05, depois do teste: a janela do Radmin precisa rodar (fechada = amigos offline). Entrar na rede pelo app foi removido; o app só abre o Radmin com /minimized
 - O IP 26.x é da conta, não da rede: adaptador "Radmin VPN" com 26.x prova que o Radmin está ligado, não que você está numa rede específica
 
 ## Decisões

@@ -1,5 +1,16 @@
 # Radmin VPN pela tela do app + ícone novo
-Data: 2026-10-05 · Commits: `4d4877d` (ícone), `a1fcaeb` (Radmin) · Próxima versão: 2.1.0 (menor)
+Data: 2026-10-05 · Commits: `4d4877d` (ícone), `a1fcaeb` (Radmin, **revertido** em `f22d446`), `10b1617` (Radmin abre na bandeja) · Próxima versão: 2.1.0 (menor)
+
+## Mudança de rumo (2026-10-05, depois do teste do dono)
+- Teste do dono: com a janela do Radmin fechada, os amigos **não** aparecem online — a janela precisa rodar
+- Decisão: entrar na rede pelo app saiu (aba, UI Automation, DPAPI, opções de fechamento e o pacote ServiceController); entrar na rede é manual, pelo Radmin
+- No lugar: na abertura, Radmin fechado → o app o abre com `/minimized`, direto na bandeja, sem janela na tela; o aviso só aparece se não está instalado ou não abriu
+- Conferido no PC do dono: Radmin aberto pelo app em ~1 s com `/minimized`, nenhuma janela visível além do contêiner de 22×22 que o Radmin sempre mantém na bandeja, adaptador Up, sem aviso; o Radmin continua aberto depois de fechar o Stream Live
+- Caso novo: `BuildStartInfo_OpensRadminStraightToTheTray` (escrito antes, falhou, depois passou). 225 testes verdes
+- As seções abaixo descrevem a versão removida e ficam como referência; os AutomationId medidos estão em `auditorias/contexto.md` (seção Radmin VPN) e o código está no commit `a1fcaeb`
+
+---
+
 
 ## O que foi adicionado
 - Ícone novo (duas janelas sobrepostas). `build/make-icon.ps1` gera o .ico com ImageMagick; 16–32 px saem de um recorte central para não virar borrão
@@ -32,9 +43,10 @@ Data: 2026-10-05 · Commits: `4d4877d` (ícone), `a1fcaeb` (Radmin) · Próxima 
 | Verificação | 258 testes (34 novos), smoke do .exe verde |
 
 ## Pendente
-- Teste manual antes da 2.1.0 — Alta: entrar com nome e senha certos, "ligar e entrar" com o Radmin desligado, Desconectar real, fechar o app com as duas opções ligadas. Não testados ao vivo para não derrubar a VPN do dono
+- Teste com um amigo na build da 2.1.0: abrir o Stream Live com o Radmin fechado e ver os amigos online sem o Radmin aparecer na tela — Média
+- (sem efeito: a aba Radmin saiu) entrar com nome e senha certos, Desconectar real, opções de fechamento
 - O veredito do `12-pre-lancamento` da 2.0.0 não cobre esta mudança
 
 ## Decidi não corrigir
-- Senha fica em memória como string enquanto o app usa (o PasswordBox do WPF não evita) — Baixa
+- (versão removida) Senha fica em memória como string enquanto o app usa (o PasswordBox do WPF não evita) — Baixa
 - Com o Radmin na bandeja, a janela dele aparece por um instante ao conectar — não há como abri-lo já escondido pela UI Automation
