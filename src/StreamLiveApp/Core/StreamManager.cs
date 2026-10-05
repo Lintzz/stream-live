@@ -148,6 +148,7 @@ namespace StreamLiveApp
         private System.Threading.Timer? _hostStatsTimer;
         private System.Threading.Timer? _viewerStatsTimer;
         private int _statsEncodedFrames = 0;
+        private int _statsCapturedFrames = 0;
         private long _statsEncodedBytes = 0;
         private int _statsDecodedFrames = 0;
 
@@ -254,6 +255,12 @@ namespace StreamLiveApp
             videoCapturer.OnVideoSourceRawSample += (duration, width, height, sample, format) =>
             {
                 OnLocalVideoFrameReady?.Invoke(sample, width, height, width * VideoCapturer.BytesPerPixel);
+                System.Threading.Interlocked.Increment(ref _statsCapturedFrames);
+
+                // Sem ninguém conectado o quadro só serve à prévia: codificar custava mais de um
+                // núcleo numa live sem público. Quem entra ganha uma rajada de keyframes ao
+                // conectar (StartKeyFrameBurst), então nada se perde por pular aqui.
+                if (!ShouldEncode(ContarPeers().conectados)) return;
 
                 if (System.Threading.Interlocked.CompareExchange(ref _isEncoding, 1, 0) != 0)
                 {
@@ -608,14 +615,18 @@ namespace StreamLiveApp
 
             _hostStatsTimer = new System.Threading.Timer(_ =>
             {
-                var fps = System.Threading.Interlocked.Exchange(ref _statsEncodedFrames, 0);
+                var encodedFps = System.Threading.Interlocked.Exchange(ref _statsEncodedFrames, 0);
+                var capturedFps = System.Threading.Interlocked.Exchange(ref _statsCapturedFrames, 0);
                 var bytes = System.Threading.Interlocked.Exchange(ref _statsEncodedBytes, 0);
                 var audio = System.Threading.Interlocked.Exchange(ref _audioFramesSent, 0);
                 var semDestino = System.Threading.Interlocked.Exchange(ref _audioFramesDropped, 0);
-                OnHostStatsUpdated?.Invoke(fps, bytes * 8.0 / 1000.0);
+
+                // O fps mostrado é o da captura: sem público o encode fica parado de propósito,
+                // e "0 fps" faria o host achar que a tela travou. Os kbps são do que saiu.
+                OnHostStatsUpdated?.Invoke(capturedFps, bytes * 8.0 / 1000.0);
                 OnAudioStatsUpdated?.Invoke(audio);
 
-                try { AvaliarSaudeDaLive(fps, bytes, audio, semDestino); } catch { }
+                try { AvaliarSaudeDaLive(capturedFps, encodedFps, bytes, audio, semDestino); } catch { }
             }, null, 1000, 1000);
 
             DiagnosticLog.Session("papel=host");
@@ -631,7 +642,32 @@ namespace StreamLiveApp
         /// contagem de peers na mesma linha é o que desfaz esse engano — os quadros contados
         /// são os codificados, não os entregues.
         /// </summary>
-        private void AvaliarSaudeDaLive(int fps, long bytes, int audio, int audioSemDestino)
+        /// <summary>Codifica só com alguém conectado (ver o handler da captura).</summary>
+        internal static bool ShouldEncode(int connectedPeers) => connectedPeers > 0;
+
+        /// <summary>
+        /// O aviso ao host, ou null se está tudo certo. Olha a captura, e não o encode: sem
+        /// público o encode para de propósito, e olhar para ele acusaria "tela não capturada"
+        /// em toda live sem ninguém assistindo.
+        /// </summary>
+        internal static string? DecideHealthWarning(int conectados, int total, int capturedFps, int audio)
+        {
+            if (total > 0 && conectados == 0)
+            {
+                // Dizia "verifique o firewall do Windows". Era um palpite exibido como
+                // diagnóstico, e mandou gente caçar regra de firewall enquanto a causa real
+                // estava nos candidatos ICE. Agora o aviso relata o que aconteceu — o log
+                // (categoria WebRTC/*) é que carrega os endereços tentados.
+                return total == 1
+                    ? "A conexão de vídeo com quem está assistindo não fechou — só o áudio está indo."
+                    : $"A conexão de vídeo não fechou com nenhum dos {total} espectadores — só o áudio está indo.";
+            }
+            if (capturedFps == 0) return "Sua tela não está sendo capturada — nada de imagem está saindo daqui.";
+            if (conectados > 0 && audio == 0) return "Seu áudio não está sendo enviado.";
+            return null;
+        }
+
+        private void AvaliarSaudeDaLive(int capturedFps, int fps, long bytes, int audio, int audioSemDestino)
         {
             var decorrido = _broadcastClock.Elapsed;
             var (conectados, total) = ContarPeers();
@@ -639,7 +675,7 @@ namespace StreamLiveApp
             if (++_statsTicks % StatsLogIntervalTicks == 0)
             {
                 DiagnosticLog.Info("Live",
-                    $"video={fps}fps {bytes * 8.0 / 1000.0:F0}kbps falhasEncode={_encodeFailures} | " +
+                    $"captura={capturedFps}fps video={fps}fps {bytes * 8.0 / 1000.0:F0}kbps falhasEncode={_encodeFailures} | " +
                     $"audio={audio}/s semDestino={audioSemDestino}/s falhas={_audioFailures} | " +
                     $"peers={conectados}/{total} | captura={ActiveCaptureMode}");
             }
@@ -648,25 +684,7 @@ namespace StreamLiveApp
             // avisar antes disso transformaria o começo normal de toda live num alerta.
             if (decorrido < HealthGracePeriod) return;
 
-            string? aviso = null;
-            if (total > 0 && conectados == 0)
-            {
-                // Dizia "verifique o firewall do Windows". Era um palpite exibido como
-                // diagnóstico, e mandou gente caçar regra de firewall enquanto a causa real
-                // estava nos candidatos ICE. Agora o aviso relata o que aconteceu — o log
-                // (categoria WebRTC/*) é que carrega os endereços tentados.
-                aviso = total == 1
-                    ? "A conexão de vídeo com quem está assistindo não fechou — só o áudio está indo."
-                    : $"A conexão de vídeo não fechou com nenhum dos {total} espectadores — só o áudio está indo.";
-            }
-            else if (fps == 0)
-            {
-                aviso = "Sua tela não está sendo capturada — nada de imagem está saindo daqui.";
-            }
-            else if (conectados > 0 && audio == 0)
-            {
-                aviso = "Seu áudio não está sendo enviado.";
-            }
+            string? aviso = DecideHealthWarning(conectados, total, capturedFps, audio);
 
             if (aviso == _avisoAtual) return;
             _avisoAtual = aviso;
