@@ -12,7 +12,7 @@
         <Style x:Key="DarkTextBox" TargetType="TextBox">
             <Setter Property="Background" Value="#1E1E24"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="BorderBrush" Value="#3D3D45"/>
+            <Setter Property="BorderBrush" Value="#6A6A75"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="6,0"/>
             <Setter Property="Height" Value="28"/>
@@ -95,19 +95,19 @@
                              LostFocus="TxtNewIp_LostFocus" TextChanged="TxtNewIp_TextChanged"/>
                 </StackPanel>
                 <Button Grid.Column="4" Content="Adicionar" Width="80" Height="28" VerticalAlignment="Bottom"
-                        Background="#0094F2" Foreground="White" Style="{StaticResource DialogButton}" Click="BtnAdd_Click"/>
+                        Background="#0078D4" Foreground="White" Style="{StaticResource DialogButton}" Click="BtnAdd_Click"/>
             </Grid>
 
             <StackPanel Grid.Row="2" Margin="0,4,0,8">
                 <TextBlock x:Name="TxtAddError" Foreground="#FF6B6B" FontSize="11" TextWrapping="Wrap"
                            Margin="0,0,0,4" Visibility="Collapsed"/>
                 <TextBlock x:Name="TxtHint" Text="Clique nos campos da lista para editar o apelido ou o IP."
-                           Foreground="#777777" FontSize="11" TextWrapping="Wrap"/>
+                           Foreground="#9A9AA4" FontSize="11" TextWrapping="Wrap"/>
             </StackPanel>
 
             <Border Grid.Row="3" Background="#141419" BorderBrush="#2D2D35" BorderThickness="1" CornerRadius="6">
                 <Grid>
-                    <TextBlock x:Name="TxtEmpty" Text="Nenhum amigo salvo ainda." Foreground="#666666" FontSize="12"
+                    <TextBlock x:Name="TxtEmpty" Text="Nenhum amigo salvo ainda." Foreground="#9A9AA4" FontSize="12"
                                HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
                     <ListBox x:Name="LstFriends" Background="Transparent" BorderThickness="0"
                              HorizontalContentAlignment="Stretch"
@@ -178,7 +178,7 @@
                                 Style="{StaticResource DialogButton}" Click="BtnUndo_Click"/>
                     </StackPanel>
                 </Border>
-                <Button Content="Concluir" Width="90" Height="30" Background="#0094F2" Foreground="White"
+                <Button Content="Concluir" Width="90" Height="30" Background="#0078D4" Foreground="White"
                         HorizontalAlignment="Right"
                         Style="{StaticResource DialogButton}" Click="BtnClose_Click"/>
             </Grid>

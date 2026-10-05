@@ -53,7 +53,7 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
                 <Button x:Name="BtnIgnore" Content="Continuar assim mesmo" Width="160" Height="32" Margin="0,0,10,0"
                         Style="{StaticResource DialogButton}" Click="BtnIgnore_Click"/>
-                <Button x:Name="BtnOpen" Content="Abrir Radmin VPN" Width="140" Height="32" Background="#0094F2" Foreground="White"
+                <Button x:Name="BtnOpen" Content="Abrir Radmin VPN" Width="140" Height="32" Background="#0078D4" Foreground="White"
                         Style="{StaticResource DialogButton}" Click="BtnOpen_Click"/>
             </StackPanel>
         </StackPanel>
