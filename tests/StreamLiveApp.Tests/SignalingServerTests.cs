@@ -172,6 +172,32 @@ public class SignalingServerLifecycleTests
             "26.10.0.11", false, Ips(), true, Ips("26.10.0.9")));
     }
 
+    /// <summary>
+    /// O servidor escuta em todas as placas de rede. Com a lista de amigos desligada, aceitar
+    /// "qualquer um" chegou a incluir a rede local e quem alcançasse a porta pelo roteador;
+    /// agora é qualquer um da Radmin (26.0.0.0/8).
+    /// </summary>
+    [Theory]
+    [InlineData("26.10.0.11", true)]
+    [InlineData("26.0.0.1", true)]
+    [InlineData("26.255.255.254", true)]
+    [InlineData("192.168.0.10", false)]
+    [InlineData("10.0.0.7", false)]
+    [InlineData("25.1.2.3", false)]
+    [InlineData("126.10.0.11", false)]
+    [InlineData("8.8.8.8", false)]
+    public void WithFriendsListOffOnlyTheRadminRangeGetsIn(string ip, bool accepted)
+    {
+        Assert.Equal(accepted, SignalingServer.ShouldAcceptConnection(ip, false, Ips(), false, Ips()));
+    }
+
+    [Fact]
+    public void ASavedFriendOutsideTheRadminRangeStillGetsIn()
+    {
+        // Amigo salvo pelo IP da rede local é escolha explícita, e continua valendo.
+        Assert.True(SignalingServer.ShouldAcceptConnection("192.168.0.10", true, Ips("192.168.0.10"), false, Ips()));
+    }
+
     [Fact]
     public void LocalhostPassesBothGatesEvenWithNobodyInvited()
     {

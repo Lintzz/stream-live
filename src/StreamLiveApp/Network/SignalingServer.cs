@@ -213,6 +213,12 @@ namespace StreamLiveApp
 
             if (restrictToFriends && !allowedIps.Contains(normalizedIp)) return false;
 
+            // O servidor escuta em todas as placas (0.0.0.0) — ligar só no IP da Radmin
+            // quebraria quando ela abre depois do app. Então, com a lista de amigos
+            // desligada, "qualquer um" quer dizer qualquer um da Radmin (26.0.0.0/8), e não
+            // a rede local ou quem alcançar a 8080 por redirecionamento no roteador.
+            if (!restrictToFriends && !normalizedIp.StartsWith("26.", StringComparison.Ordinal)) return false;
+
             if (privateLive && !invitedIps.Contains(normalizedIp)) return false;
 
             return true;

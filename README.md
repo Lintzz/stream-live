@@ -196,8 +196,9 @@ Pontos que valem para quem for usar ou adaptar o projeto:
   controle que o host manda em claro (`AUTH_*`, `STATUS_RESPONSE`, `PONG`) — e fazer o viewer
   esquecer a chave ao receber `STREAM_STOPPED`, senão a live seguinte sem senha não chega.
 - **O servidor escuta em todas as interfaces (`0.0.0.0:8080`).** A lista de amigos por IP vem
-  ligada e é o que protege a porta. Se você desligar a lista e a porta estiver acessível por
-  outra rede (rede local, redirecionamento no roteador), qualquer um consegue assistir.
+  ligada e é o que protege a porta. Com ela desligada, entra qualquer máquina da Radmin
+  (`26.0.0.0/8`) — a rede local e quem alcançar a porta pelo roteador continuam recusados —,
+  então numa rede pública da Radmin use senha na sala.
 - **O auto-update protege contra download corrompido, não contra conta comprometida.** O
   `.sha256` vem da mesma release do instalador, e o instalador não é assinado. Quem tomasse a
   conta do GitHub do autor poderia publicar uma versão maliciosa, e o app de quem já instalou
