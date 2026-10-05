@@ -224,4 +224,19 @@ public class VpnStatusServiceTests
         Assert.Equal(@"C:\c\RvRvpnGui.exe", found);
         Assert.Equal(new[] { @"C:\c\RvRvpnGui.exe" }, consulted);
     }
+
+    /// <summary>
+    /// O app abre o Radmin sozinho na abertura, e ele não pode aparecer na tela: /minimized é
+    /// o mesmo argumento do início automático do Windows, e sobe direto na bandeja. A janela
+    /// tem que existir (com ela fechada os amigos aparecem offline), só não pode ser vista.
+    /// </summary>
+    [Fact]
+    public void BuildStartInfo_OpensRadminStraightToTheTray()
+    {
+        var info = VpnStatusService.BuildStartInfo(@"C:\Radmin VPN\RvRvpnGui.exe");
+
+        Assert.Equal(@"C:\Radmin VPN\RvRvpnGui.exe", info.FileName);
+        Assert.Equal("/minimized", info.Arguments);
+        Assert.True(info.UseShellExecute);
+    }
 }

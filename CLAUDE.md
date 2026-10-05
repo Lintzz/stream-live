@@ -152,6 +152,20 @@ preset `ultrafast`, escala por vizinho mais próximo e prioridade `BelowNormal`)
 manual de captura GDI — o **fallback automático** DXGI→GDI descrito acima continua valendo.
 Nenhuma das três era usada como escolha; só um dos valores rodava.
 
+### Radmin VPN aberto junto com o app
+
+Na abertura, se a janela do Radmin (`RvRvpnGui`) não está rodando, o app a abre sozinho com
+`/minimized` — o argumento do início automático do Windows, que sobe direto na bandeja, sem
+nada na tela. O `VpnWarningDialog` só aparece se o Radmin não está instalado ou não abriu.
+A janela **precisa** rodar: testado em 2026-10-05, com ela fechada o serviço `RvControlSvc` e o
+adaptador 26.x continuam de pé, mas os amigos aparecem offline. Por isso a checagem é pelo
+processo da janela, não pelo serviço.
+
+Entrar numa rede pelo app (UI Automation na janela do Radmin) chegou a ser feito e foi
+**removido** por decisão do dono: entrar na rede é manual, pelo próprio Radmin. O Radmin não tem
+linha de comando nem API para isso; o que foi medido (seletores, armadilhas) está em
+`auditorias/features/radmin-e-icone.md`, caso volte.
+
 ### Persistência e estado
 
 `friends.json` e `settings.json` em `%LOCALAPPDATA%\StreamLiveApp\` (mesma pasta de

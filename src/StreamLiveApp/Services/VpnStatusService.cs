@@ -44,6 +44,8 @@ namespace StreamLiveApp.Services
             {
                 var candidates = new[]
                 {
+                    // Pasta escolhida no instalador; cobre quem instalou fora do Program Files.
+                    ReadInstallLocation() is string folder ? Path.Combine(folder, Path.GetFileName(ExecutableRelativePath)) : null,
                     // O Radmin é 32 bits, então em quase toda máquina cai no primeiro.
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), ExecutableRelativePath),
                     Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), ExecutableRelativePath)
@@ -69,7 +71,51 @@ namespace StreamLiveApp.Services
             return null;
         }
 
-        /// <summary>Abre o Radmin VPN. False quando ele não está instalado ou não subiu.</summary>
+        /// <summary>
+        /// InstallLocation da entrada de desinstalação do Radmin VPN (só leitura). O nome da
+        /// chave é um GUID que muda entre versões, então a busca é pelo DisplayName.
+        /// </summary>
+        private static string? ReadInstallLocation()
+        {
+            foreach (var root in new[]
+            {
+                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall",
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+            })
+            {
+                using var uninstall = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(root);
+                if (uninstall == null) continue;
+
+                foreach (var name in uninstall.GetSubKeyNames())
+                {
+                    using var entry = uninstall.OpenSubKey(name);
+                    if (entry?.GetValue("DisplayName") is string display
+                        && display.StartsWith("Radmin VPN", StringComparison.OrdinalIgnoreCase)
+                        && entry.GetValue("InstallLocation") is string location
+                        && !string.IsNullOrWhiteSpace(location))
+                    {
+                        return location;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// A janela do Radmin precisa estar rodando — testado em 2026-10-05: com ela fechada, o
+        /// serviço e o adaptador continuam de pé, mas os amigos aparecem offline. Ela só não
+        /// precisa ser vista: /minimized (o argumento do início automático do Windows) sobe
+        /// direto na bandeja. UseShellExecute porque versões antigas do Radmin pediam
+        /// elevação, e sem o shell o Start falha nelas; o 2.1 roda sem admin.
+        /// </summary>
+        internal static ProcessStartInfo BuildStartInfo(string executablePath)
+            => new(executablePath, "/minimized") { UseShellExecute = true };
+
+        /// <summary>
+        /// Abre o Radmin VPN direto na bandeja, sem janela na tela. False quando ele não está
+        /// instalado ou não subiu.
+        /// </summary>
         public static bool TryStart()
         {
             var path = FindExecutable();
@@ -77,8 +123,7 @@ namespace StreamLiveApp.Services
 
             try
             {
-                // UseShellExecute porque o Radmin pede elevação: sem o shell o Start falha.
-                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                Process.Start(BuildStartInfo(path))?.Dispose();
                 return true;
             }
             catch

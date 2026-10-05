@@ -5,8 +5,9 @@ using StreamLiveApp.Services;
 namespace StreamLiveApp
 {
     /// <summary>
-    /// Aviso mostrado na abertura quando a Radmin VPN está fechada. Oferece abri-la em vez de
-    /// só reclamar: o caminho normal é o usuário ter esquecido de subir a VPN.
+    /// Aviso mostrado na abertura quando a Radmin VPN está fechada e o app não conseguiu
+    /// abri-la sozinho (ou ela não está instalada). Oferece tentar de novo em vez de só
+    /// reclamar.
     /// </summary>
     public partial class VpnWarningDialog : Window
     {

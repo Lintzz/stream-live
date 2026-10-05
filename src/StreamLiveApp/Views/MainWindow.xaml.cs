@@ -173,10 +173,21 @@ namespace StreamLiveApp
         /// <summary>
         /// Sem a Radmin VPN aberta a lista de amigos fica inteira offline sem explicação. Só na
         /// abertura: o timer de status (5 s) já repinta todo mundo assim que a VPN sobe.
+        ///
+        /// Fechada, o app a abre sozinho, direto na bandeja: o caso comum é ela não ter subido
+        /// com o Windows, e perguntar toda vez só adiava o óbvio. O aviso fica para quando não
+        /// dá — Radmin não instalado ou que não abriu.
         /// </summary>
         private void CheckVpnOnStartup()
         {
             if (VpnStatusService.IsRunning()) return;
+
+            if (VpnStatusService.TryStart())
+            {
+                DiagnosticLog.Info("Radmin", "Radmin VPN estava fechado; aberto na bandeja pelo app");
+                ShowTransientStatus("Radmin VPN aberto na bandeja. Seus amigos aparecem em alguns segundos.");
+                return;
+            }
 
             var dialog = VpnWarningDialog.Create(VpnStatusService.FindExecutable());
             dialog.Owner = this;
