@@ -16,6 +16,9 @@ namespace StreamLiveApp
         private readonly HashSet<Guid> _authenticatedClients = new HashSet<Guid>();
         private readonly AuthThrottle _authThrottle = new();
 
+        /// <summary>Teto de uma mensagem de texto vinda de um viewer (64 KB).</summary>
+        internal const int MaxTextMessageChars = 64 * 1024;
+
         // Desafio pendente por conexão. A senha nunca vai no fio: o viewer prova que a
         // conhece devolvendo o HMAC deste nonce.
         private readonly Dictionary<Guid, string> _challenges = new Dictionary<Guid, string>();
@@ -380,6 +383,18 @@ namespace StreamLiveApp
 
                 socket.OnMessage = message =>
                 {
+                    // O maior texto legítimo de um viewer é o answer do SDP (poucos KB, um terço
+                    // a mais cifrado). Acima do teto é lixo: derruba antes de desserializar e
+                    // decifrar. O Fleck não tem limite próprio, então a memória da mensagem já
+                    // foi alocada quando ela chega aqui — isto corta o resto do custo e a conexão.
+                    if (message.Length > MaxTextMessageChars)
+                    {
+                        DiagnosticLog.Warn("Sinalizacao",
+                            $"Mensagem de {message.Length} caracteres recusada: {NormalizeIp(socket.ConnectionInfo.ClientIpAddress)}");
+                        try { socket.Close(); } catch { }
+                        return;
+                    }
+
                     Debug.WriteLine($"[Server] Message received from {socket.ConnectionInfo.ClientIpAddress}: {message.Substring(0, Math.Min(message.Length, 50))}...");
 
                     MarkSeen(socket);

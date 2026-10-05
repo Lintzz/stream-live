@@ -193,6 +193,22 @@ public class SignalingHandshakeTests : IDisposable
     }
 
     [Fact]
+    public async Task OversizedMessageClosesTheConnection()
+    {
+        using var ws = await ConnectAsync();
+
+        // Um answer de SDP real tem poucos KB; 100 KB só vem de quem quer gastar a memória
+        // e a CPU do host desserializando lixo.
+        var huge = new string('x', 100_000);
+        await ws.SendAsync(Encoding.UTF8.GetBytes(huge), WebSocketMessageType.Text, true, CancellationToken.None);
+
+        var buffer = new byte[1024];
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var result = await ws.ReceiveAsync(buffer, cts.Token);
+        Assert.Equal(WebSocketMessageType.Close, result.MessageType);
+    }
+
+    [Fact]
     public async Task StatusCheckAnswersWithoutAuthentication()
     {
         using var ws = await ConnectAsync();
