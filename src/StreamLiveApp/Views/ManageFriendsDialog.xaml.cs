@@ -7,6 +7,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using StreamLiveApp.Models;
 using StreamLiveApp.Services;
 
@@ -15,6 +16,11 @@ namespace StreamLiveApp
     public partial class ManageFriendsDialog : Window
     {
         private readonly ObservableCollection<Friend> _friends;
+
+        // Última remoção, enquanto ainda dá para desfazer.
+        private Friend? _removedFriend;
+        private int _removedIndex;
+        private readonly DispatcherTimer _undoTimer = new() { Interval = TimeSpan.FromSeconds(8) };
 
         public event Action<Friend> FriendAdded = delegate {};
 
@@ -33,6 +39,7 @@ namespace StreamLiveApp
 
             UpdateEmptyState();
             Loaded += (s, e) => TxtNewName.Focus();
+            _undoTimer.Tick += (s, e) => HideUndo();
         }
 
         private void Friends_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => UpdateEmptyState();
@@ -107,9 +114,38 @@ namespace StreamLiveApp
         {
             if (sender is System.Windows.Controls.Button button && button.DataContext is Friend friend)
             {
+                _removedIndex = _friends.IndexOf(friend);
                 _friends.Remove(friend);
                 Save();
+
+                _removedFriend = friend;
+                TxtUndo.Text = $"{friend.DisplayName} removido";
+                TxtUndo.ToolTip = $"{friend.DisplayName} ({friend.Ip})";
+                UndoBar.Visibility = Visibility.Visible;
+                _undoTimer.Stop();
+                _undoTimer.Start();
             }
+        }
+
+        private void BtnUndo_Click(object sender, RoutedEventArgs e)
+        {
+            var friend = _removedFriend;
+            HideUndo();
+            if (friend == null) return;
+
+            // Se o IP voltou à lista nesse meio-tempo (adicionado de novo à mão), não duplica.
+            if (_friends.Any(f => string.Equals(f.Ip, friend.Ip, StringComparison.OrdinalIgnoreCase))) return;
+
+            _friends.Insert(Math.Clamp(_removedIndex, 0, _friends.Count), friend);
+            Save();
+            FriendAdded?.Invoke(friend);
+        }
+
+        private void HideUndo()
+        {
+            _undoTimer.Stop();
+            _removedFriend = null;
+            UndoBar.Visibility = Visibility.Collapsed;
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -150,6 +186,7 @@ namespace StreamLiveApp
 
         protected override void OnClosed(EventArgs e)
         {
+            _undoTimer.Stop();
             _friends.CollectionChanged -= Friends_CollectionChanged;
             Save();
             base.OnClosed(e);

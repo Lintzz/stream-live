@@ -164,10 +164,24 @@
                 </Grid>
             </Border>
 
-            <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Grid Grid.Row="4" Margin="0,14,0,0">
+                <!-- Remover é imediato e oferece desfazer, em vez de pedir confirmação: o IP
+                     do amigo só existe na Radmin dele, e um clique errado obrigava a pedir de
+                     novo. Modal de confirmação em toda remoção ensinaria a clicar sem ler. -->
+                <Border x:Name="UndoBar" Background="#26262E" CornerRadius="5" Padding="10,0,4,0"
+                        HorizontalAlignment="Left" Height="30" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtUndo" Foreground="#DDDDDD" FontSize="12" VerticalAlignment="Center"
+                                   MaxWidth="220" TextTrimming="CharacterEllipsis"/>
+                        <Button x:Name="BtnUndo" Content="Desfazer" Margin="8,0,0,0" Padding="10,0" Height="24"
+                                Background="Transparent" Foreground="#4FB3FF"
+                                Style="{StaticResource DialogButton}" Click="BtnUndo_Click"/>
+                    </StackPanel>
+                </Border>
                 <Button Content="Concluir" Width="90" Height="30" Background="#0094F2" Foreground="White"
+                        HorizontalAlignment="Right"
                         Style="{StaticResource DialogButton}" Click="BtnClose_Click"/>
-            </StackPanel>
+            </Grid>
         </Grid>
     </Border>
 </Window>
