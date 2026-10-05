@@ -85,6 +85,9 @@ namespace StreamLiveApp
             _mouseIdleTimer.Interval = TimeSpan.FromSeconds(2.5);
             _mouseIdleTimer.Tick += MouseIdleTimer_Tick;
 
+            // A prévia do host fica escondida quase sempre; lido da thread de captura.
+            HostPreviewCard.IsVisibleChanged += (s, ev) => _hostPreviewVisible = ev.NewValue is true;
+
             // A barra do player aparece com o mouse. Pelo teclado, o foco chegava em botões
             // invisíveis: ela acende quando um deles recebe foco e fica enquanto o foco estiver lá.
             VideoControlsBar.IsKeyboardFocusWithinChanged += (s, ev) =>
@@ -243,8 +246,6 @@ namespace StreamLiveApp
             _hostBroadcast.FrameReady += (pixels, width, height) =>
             {
                 UpdateHostBitmap(pixels, width, height);
-                System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                    StatusText.Visibility = Visibility.Collapsed);
             };
 
             _hostBroadcast.StatsUpdated += (fps, kbps) =>
@@ -678,8 +679,6 @@ namespace StreamLiveApp
             _demoHostFeed.FrameReady += (pixels, width, height) =>
             {
                 UpdateHostBitmap(pixels, width, height);
-                System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                    StatusText.Visibility = Visibility.Collapsed);
             };
 
             StatsOverlay.Visibility = Visibility.Visible;
@@ -697,8 +696,17 @@ namespace StreamLiveApp
             }
         }
 
+        private volatile bool _hostPreviewVisible;
+
+        /// <summary>
+        /// Leva o quadro capturado para a prévia do host. Só com a prévia visível: antes, cada
+        /// quadro (até 60/s, ~8 MB em 1080p) era copiado na thread de UI mesmo com ela escondida
+        /// — medido, 0,5 a 0,9 ms por quadro jogados fora.
+        /// </summary>
         private void UpdateHostBitmap(byte[] pixelData, int width, int height)
         {
+            if (!_hostPreviewVisible) return;
+
             System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 if (_hostBitmap == null || _hostBitmap.PixelWidth != width || _hostBitmap.PixelHeight != height || _hostBitmap.Format != PixelFormats.Bgr32)
@@ -707,6 +715,7 @@ namespace StreamLiveApp
                     VideoPlayer.Source = _hostBitmap;
                 }
 
+                StatusText.Visibility = Visibility.Collapsed;
                 _hostBitmap.Lock();
                 Marshal.Copy(pixelData, 0, _hostBitmap.BackBuffer, pixelData.Length);
                 _hostBitmap.AddDirtyRect(new Int32Rect(0, 0, width, height));
