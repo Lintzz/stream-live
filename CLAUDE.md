@@ -99,15 +99,15 @@ Detalhes que quebram fácil:
   daquela live (`SetLiveVisibility`, zerada pelo `AnnounceStop`). Recusar no `OnOpen` é o que
   esconde a live: o `FriendStatusService` do outro lado falha ao conectar e reporta *offline*,
   e a mesma recusa nega a entrada, sem precisar filtrar `RegisterViewer` nem o broadcast. A
-  recusa por live privada **não** dispara `OnConnectionRejected`: o evento vira um aviso na
-  barra de status, e cada não convidado sonda a cada 5 s.
+  recusa por live privada **não** dispara `OnConnectionRejected`: o evento vira um aviso no
+  rodapé (`ShowTransientStatus`), e cada não convidado sonda a cada 5 s.
 - A senha nunca trafega. **Protocolo de sala v2** (desde a 2.0): o host sorteia um salt a cada
   senha (`RoomPassword`), que vai no desafio; `CryptoHelper.DeriveRoomKeys` faz PBKDF2 (200k
   iterações, cache obrigatório — derivar custa ~100 ms e o áudio cifra ~50×/s) e divide a
   chave-mestra por HKDF em `Auth` (HMAC do desafio) e `Enc` (AES-GCM, formato
   `[nonce 12][tag 16][cipher]`). A v1 tinha salt fixo do app e uma chave só. **v1 e v2 não
   conversam em sala com senha** (sem senha, conversam): host v2 responde `AUTH_OUTDATED` e
-  avisa na barra de status; viewer v2 que recebe desafio sem `v2:` mostra "versão antiga".
+  avisa no rodapé (`ShowTransientStatus`); viewer v2 que recebe desafio sem `v2:` mostra "versão antiga".
 - Autenticar vale para a senha em uso: trocar ou zerar `RoomPassword` (o `AnnounceStop` zera)
   desautentica todos. Por isso o `STREAM_STARTED` sai por `BroadcastStreamStarted`, em claro para
   quem ainda não autenticou, e o viewer esquece a chave no `STREAM_STOPPED`. Com chave ativa, o
