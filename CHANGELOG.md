@@ -5,6 +5,19 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 
 ## [Não lançado]
 
+## [2.1.0] - 2026-10-05
+
+### Adicionado
+- O Stream Live abre a Radmin VPN sozinho, direto na bandeja, quando ela está fechada — sem janela do Radmin na tela.
+- Se a Radmin VPN abrir off-line, o app a deixa on-line sozinho. Às vezes o menu do Radmin pisca por uma fração de segundo perto do relógio; se não der certo, um aviso no rodapé explica como fazer à mão.
+- Ao fechar o app com a Radmin VPN aberta, a confirmação traz a caixa "Fechar o Radmin VPN também". Vem marcada; quem usa o Radmin para jogar pode desmarcar, e a escolha fica lembrada.
+
+### Alterado
+- Ícone novo.
+
+### Corrigido
+- Algumas configurações voltavam ao padrão toda vez que o app abria.
+
 ## [2.0.0] - 2026-10-05
 
 > ⚠️ **Atualize junto com seus amigos.** A sala com senha mudou a forma de conferir a senha: quem estiver numa versão anterior não consegue entrar numa sala com senha de quem já atualizou (e vice-versa). O app avisa quando o outro lado está desatualizado. Salas sem senha continuam funcionando entre versões.
