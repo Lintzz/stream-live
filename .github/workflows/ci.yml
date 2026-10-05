@@ -6,19 +6,39 @@ on:
   pull_request:
     branches: [main]
 
+# O CI só lê o código. Declarado aqui para não depender da configuração do repositório.
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # Actions fixadas por SHA (a tag de versão pode ser movida); o comentário diz qual é.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # As DLLs do FFmpeg (~250 MB) vivem no LFS, e todo download do Actions sai da cota
+      # mensal de banda do dono do repositório (10 GiB no plano gratuito): baixando a cada
+      # execução, ~40 CIs num mês estouram a cota e o CI passa a falhar. O cache guarda os
+      # objetos pelo id deles, e só baixa de novo quando alguma DLL muda.
+      - name: Listar objetos do LFS
+        shell: bash
+        run: git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
+
+      - name: Restaurar cache do LFS
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
-          lfs: true
+          path: .git/lfs
+          key: lfs-${{ hashFiles('.lfs-assets-id') }}
+
+      - name: Baixar objetos do LFS
+        run: git lfs pull
 
       # A versão vem do global.json; sem ele o runner usava o SDK mais novo da imagem
       # (10.x) em vez do 8.0 com que o projeto é compilado localmente.
       - name: Configurar .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           global-json-file: global.json
 
