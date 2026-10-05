@@ -26,9 +26,6 @@ namespace StreamLiveApp
             if (executablePath == null)
             {
                 dialog.BtnOpen.Visibility = Visibility.Collapsed;
-                dialog.JoinFromAppLink.Visibility = Visibility.Collapsed;
-                // Hyperlink em TextBlock recolhido continua focável: sem isto o Tab pararia nele.
-                dialog.LnkJoinFromApp.IsEnabled = false;
                 dialog.TxtNotInstalled.Visibility = Visibility.Visible;
                 dialog.BtnIgnore.Content = "Entendi";
             }
@@ -47,16 +44,6 @@ namespace StreamLiveApp
             }
 
             DialogResult = true;
-            Close();
-        }
-
-        /// <summary>O usuário escolheu entrar na rede pela aba Radmin VPN das configurações.</summary>
-        public bool WantsToJoinFromApp { get; private set; }
-
-        private void BtnJoinFromApp_Click(object sender, RoutedEventArgs e)
-        {
-            WantsToJoinFromApp = true;
-            DialogResult = false;
             Close();
         }
 
