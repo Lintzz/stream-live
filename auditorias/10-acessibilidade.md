@@ -16,6 +16,7 @@ Referência: WCAG 2.2 AA aplicada a app WPF. Medição pela árvore de UI Automa
 - Baixo — Link do GitHub só de mouse: Hyperlink "Código no GitHub". Conferido (focável, papel de link)
 
 ## Pendente
+- Alto (achado no /12, 2026-10-05) — Com uma live aberta, depois de reabrir a lista de amigos pelo puxador, o Tab chega nos cards e o Enter funciona, mas a UI Automation não acha os cards: o leitor de tela anuncia o nome da janela ("Stream Live") em vez de "Diego, ao vivo". Sem live, os nomes saem certos. O "Diego pelo Tab: True" do teste do /10 era falso positivo (o roteiro casava o nome depois de a lista ter sido montada). Tentado e descartado: InvalidatePeer na lista ao reabrir (não resolveu); Visibility.Hidden no lugar de Collapsed (piorou). Próximo passo: descobrir se é a reordenação da lista (SortRank muda quando uma live abre) ou o Collapsed
 - 🔍 Teste humano com o Narrador ligado (roteiro abaixo) — Médio
 - 🔍 Texto do Windows em 150% (Acessibilidade → Tamanho do texto) — Baixo
 
