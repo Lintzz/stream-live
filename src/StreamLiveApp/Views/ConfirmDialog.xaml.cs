@@ -27,6 +27,27 @@ namespace StreamLiveApp
             return dialog.ShowDialog() == true;
         }
 
+        /// <summary>
+        /// Igual ao <see cref="Ask(Window, string, string, string)"/>, com uma caixa de opção
+        /// abaixo da mensagem. <paramref name="optionChecked"/> entra com o estado inicial e sai
+        /// com o que a pessoa deixou — só vale quando ela confirmou.
+        /// </summary>
+        public static bool Ask(Window owner, string title, string message, string confirmText,
+            string optionText, ref bool optionChecked)
+        {
+            var dialog = new ConfirmDialog { Owner = owner, Title = title };
+            dialog.TxtTitle.Text = title;
+            dialog.TxtMessage.Text = message;
+            dialog.BtnConfirm.Content = confirmText;
+            dialog.ChkOption.Content = optionText;
+            dialog.ChkOption.IsChecked = optionChecked;
+            dialog.ChkOption.Visibility = Visibility.Visible;
+
+            bool confirmed = dialog.ShowDialog() == true;
+            if (confirmed) optionChecked = dialog.ChkOption.IsChecked == true;
+            return confirmed;
+        }
+
         private void BtnConfirm_Click(object sender, RoutedEventArgs e)
         {
             DialogResult = true;

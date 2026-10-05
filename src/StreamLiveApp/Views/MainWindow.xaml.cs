@@ -1614,14 +1614,29 @@ namespace StreamLiveApp
         [DllImport("kernel32.dll")]
         private static extern bool TerminateProcess(IntPtr process, uint exitCode);
 
+        /// <summary>Marcado na confirmação de fechar: o Radmin sai junto com o app.</summary>
+        private bool _closeRadminOnExit;
+
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            // Fechar no meio da live derrubava quem estava assistindo sem aviso nenhum. Só
-            // pergunta quando há gente do outro lado — live sem público fecha direto — e nunca
-            // quando é a atualização fechando o app para o instalador rodar.
-            if (_isBroadcasting && !UpdateManager.IsInstallingUpdate)
+            // Nunca pergunta quando é a atualização fechando o app para o instalador rodar.
+            if (UpdateManager.IsInstallingUpdate)
             {
-                var names = CurrentViewerNames();
+                base.OnClosing(e);
+                return;
+            }
+
+            // Fechar no meio da live derrubava quem estava assistindo sem aviso nenhum: com
+            // gente do outro lado, a confirmação diz quem cai. Sem público, só pergunta se o
+            // Radmin está aberto — para oferecer fechá-lo junto. A caixa existe porque o Radmin
+            // também serve a outras coisas (jogar com os amigos, por exemplo): fechá-lo sem
+            // perguntar derrubaria o jogo.
+            var names = _isBroadcasting ? CurrentViewerNames() : new List<string>();
+            bool radminOpen = !DemoMode.IsEnabled && VpnStatusService.IsRunning();
+
+            if (names.Count > 0 || radminOpen)
+            {
+                string title, message, confirmText;
                 if (names.Count > 0)
                 {
                     string who = names.Count switch
@@ -1630,15 +1645,42 @@ namespace StreamLiveApp
                         <= 3 => $"{string.Join(", ", names.Take(names.Count - 1))} e {names[^1]} estão assistindo",
                         _ => $"{string.Join(", ", names.Take(2))} e mais {names.Count - 2} estão assistindo"
                     };
-                    bool confirmed = ConfirmDialog.Ask(this,
-                        names.Count == 1 ? "Encerrar a live para 1 amigo?" : $"Encerrar a live para {names.Count} amigos?",
-                        $"{who}. Fechar o Stream Live encerra a transmissão para todos.",
-                        "Encerrar e fechar");
-                    if (!confirmed)
+                    title = names.Count == 1 ? "Encerrar a live para 1 amigo?" : $"Encerrar a live para {names.Count} amigos?";
+                    message = $"{who}. Fechar o Stream Live encerra a transmissão para todos.";
+                    confirmText = "Encerrar e fechar";
+                }
+                else
+                {
+                    title = "Fechar o Stream Live?";
+                    message = "Você deixa de aparecer online para os seus amigos.";
+                    confirmText = "Fechar";
+                }
+
+                bool confirmed;
+                if (radminOpen)
+                {
+                    bool closeRadmin = _settings.CloseRadminOnExit;
+                    confirmed = ConfirmDialog.Ask(this, title, message, confirmText,
+                        "Fechar o Radmin VPN também", ref closeRadmin);
+                    if (confirmed)
                     {
-                        e.Cancel = true;
-                        return;
+                        _closeRadminOnExit = closeRadmin;
+                        if (_settings.CloseRadminOnExit != closeRadmin)
+                        {
+                            _settings.CloseRadminOnExit = closeRadmin;
+                            SettingsService.Save(_settings);
+                        }
                     }
+                }
+                else
+                {
+                    confirmed = ConfirmDialog.Ask(this, title, message, confirmText);
+                }
+
+                if (!confirmed)
+                {
+                    e.Cancel = true;
+                    return;
                 }
             }
             base.OnClosing(e);
@@ -1653,6 +1695,10 @@ namespace StreamLiveApp
                 session.Dispose();
             }
             base.OnClosed(e);
+
+            // Antes do ForceExit, que mata o processo sem esperar ninguém. Com teto: um Radmin
+            // travado não segura o fechamento do app.
+            if (_closeRadminOnExit) RadminPowerService.ExitRadmin(TimeSpan.FromSeconds(3));
 
             ForceExit();
         }

@@ -101,7 +101,7 @@ namespace StreamLiveApp.Services
             //    aparecer perto do relógio por ~0,2 s: o Qt tira a transparência ao mostrá-lo,
             //    então não há como escondê-lo. Ainda é melhor do que o usuário ter de clicar.
             if (ReadPowerOn() != false) return RadminPowerResult.TurnedOn;
-            if (ClickGoOnlineInTrayMenu(ct) && WaitForOnline(ConfirmTimeout, ct))
+            if (ClickTrayMenuItem(IsGoOnlineItem, ct) && WaitForOnline(ConfirmTimeout, ct))
             {
                 DiagnosticLog.Info("Radmin", "Radmin estava off-line; ligado pelo app (menu da bandeja)");
                 return RadminPowerResult.TurnedOn;
@@ -110,6 +110,48 @@ namespace StreamLiveApp.Services
             if (ReadPowerOn() == true) return RadminPowerResult.TurnedOn;
             DiagnosticLog.Warn("Radmin", "Radmin off-line e nem o clique nem o menu da bandeja o ligaram");
             return RadminPowerResult.Failed;
+        }
+
+        /// <summary>
+        /// Fecha o Radmin VPN (o usuário marcou "Fechar o Radmin VPN também" ao sair). Pelo
+        /// "Sair" do menu da bandeja, que é o fechamento limpo; encerrar o processo é só o
+        /// reserva, porque deixa o ícone fantasma na bandeja até o mouse passar por cima.
+        /// Bloqueia no máximo <paramref name="budget"/>: o fechamento do app não espera mais.
+        /// </summary>
+        public static void ExitRadmin(TimeSpan budget)
+        {
+            var work = Task.Run(() =>
+            {
+                var deadline = DateTime.UtcNow + budget - TimeSpan.FromMilliseconds(500);
+                try
+                {
+                    if (!ClickTrayMenuItem(IsExitItem, CancellationToken.None))
+                        DiagnosticLog.Warn("Radmin", "Não achou o Sair no menu do Radmin; encerrando o processo");
+
+                    while (DateTime.UtcNow < deadline && IsRadminRunning()) Thread.Sleep(100);
+                    if (IsRadminRunning())
+                    {
+                        foreach (var process in Process.GetProcessesByName("RvRvpnGui"))
+                        {
+                            using (process) process.Kill();
+                        }
+                    }
+                    DiagnosticLog.Info("Radmin", "Radmin VPN fechado junto com o app");
+                }
+                catch (Exception ex)
+                {
+                    DiagnosticLog.Warn("Radmin", $"Fechar o Radmin falhou ({ex.GetType().Name})");
+                }
+            });
+
+            try { work.Wait(budget); } catch { }
+        }
+
+        private static bool IsRadminRunning()
+        {
+            var processes = Process.GetProcessesByName("RvRvpnGui");
+            foreach (var p in processes) p.Dispose();
+            return processes.Length > 0;
         }
 
         // ---------------------------------------------------------------- regras puras
@@ -129,6 +171,13 @@ namespace StreamLiveApp.Services
         /// menu muda de itens (o "Abrir chat" só aparece on-line), e o vizinho é o "Ficar
         /// off-line". Outro idioma do Radmin não casa, e aí o app só avisa.
         /// </summary>
+        /// <summary>"Sair" / "Exit" do menu da bandeja.</summary>
+        internal static bool IsExitItem(string name)
+        {
+            var n = name.Replace("&", "").Trim();
+            return n.Equals("Sair", StringComparison.OrdinalIgnoreCase) || n.Equals("Exit", StringComparison.OrdinalIgnoreCase);
+        }
+
         internal static bool IsGoOnlineItem(string name)
         {
             var n = name.Replace("&", "").ToLowerInvariant();
@@ -226,10 +275,10 @@ namespace StreamLiveApp.Services
         }
 
         /// <summary>
-        /// Abre o menu do ícone da bandeja e clica em "Ficar on-line" pela UI Automation. Se o
-        /// item não aparecer (outro idioma, Radmin mudou), fecha o menu sem clicar em nada.
+        /// Abre o menu do ícone da bandeja e clica no item pedido pela UI Automation. Se o item
+        /// não aparecer (outro idioma, Radmin mudou), fecha o menu sem clicar em nada.
         /// </summary>
-        private static bool ClickGoOnlineInTrayMenu(CancellationToken ct)
+        private static bool ClickTrayMenuItem(Func<string, bool> isWanted, CancellationToken ct)
         {
             var tray = FindTrayWindow();
             if (tray == IntPtr.Zero) return false;
@@ -257,7 +306,7 @@ namespace StreamLiveApp.Services
                     bool clicked = false;
                     foreach (System.Windows.Automation.AutomationElement item in items)
                     {
-                        if (IsGoOnlineItem(item.Current.Name)
+                        if (isWanted(item.Current.Name)
                             && item.TryGetCurrentPattern(System.Windows.Automation.InvokePattern.Pattern, out var invoke))
                         {
                             ((System.Windows.Automation.InvokePattern)invoke).Invoke();

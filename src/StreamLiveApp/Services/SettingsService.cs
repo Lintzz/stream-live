@@ -16,6 +16,13 @@ namespace StreamLiveApp.Services
 
         /// <summary>Só IPs da lista de amigos conseguem conectar.</summary>
         public bool RestrictToFriends { get; set; } = true;
+
+        /// <summary>
+        /// Última escolha da caixa "Fechar o Radmin VPN também" na confirmação de fechar.
+        /// Marcada de fábrica; quem desmarca (porque usa o Radmin para jogar, por exemplo)
+        /// encontra desmarcada da próxima vez.
+        /// </summary>
+        public bool CloseRadminOnExit { get; set; } = true;
     }
 
     /// <summary>Lê e grava as preferências em <c>settings.json</c>, ao lado do <c>friends.json</c>.</summary>

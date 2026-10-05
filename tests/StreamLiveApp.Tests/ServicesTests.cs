@@ -263,6 +263,17 @@ public class VpnStatusServiceTests
     }
 
     [Theory]
+    [InlineData("Sair", true)]
+    [InlineData("Exit", true)]
+    [InlineData("E&xit", true)]
+    [InlineData("Abrir", false)]
+    [InlineData("Ficar off-line", false)]
+    public void IsExitItem_RecognizesTheQuitItem(string name, bool expected)
+    {
+        Assert.Equal(expected, RadminPowerService.IsExitItem(name));
+    }
+
+    [Theory]
     // Medido no Radmin 2.1.1 a 96 DPI: janela de 336 px, botão de energia centrado em (51, 105).
     [InlineData(336, 51, 105)]
     [InlineData(504, 77, 158)]   // 150% de escala
