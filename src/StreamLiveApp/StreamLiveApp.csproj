@@ -21,6 +21,10 @@
     <RepositoryUrl>https://github.com/Lintzz/stream-live</RepositoryUrl>
     <ApplicationIcon>Assets\app_icon.ico</ApplicationIcon>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- O executável distribuído guardava o caminho desta máquina (D:\Projetos\...) para o .pdb
+         e para os fontes. O PathMap troca a raiz do repositório por /_/: o .pdb continua indo
+         no instalador (dá número de linha no error.log), sem revelar onde foi compilado. -->
+    <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..'))=/_/</PathMap>
   </PropertyGroup>
 
   <!-- Regras de captura que valem a pena testar sem serem API pública do app. -->
