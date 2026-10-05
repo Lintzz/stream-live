@@ -390,7 +390,7 @@
                                        Foreground="#555560" FontSize="14" FontWeight="SemiBold" Margin="0,12,0,0" HorizontalAlignment="Center"/>
                         </StackPanel>
 
-                        <ItemsControl x:Name="GridSessions">
+                        <ItemsControl x:Name="GridSessions" Focusable="False" AutomationProperties.Name="Lives abertas">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <UniformGrid Columns="{Binding DataContext.GridColumns, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
@@ -448,7 +448,7 @@
                 </Border>
 
                         <!-- Controles do player: somem sozinhos e voltam quando o mouse passa -->
-                        <Grid x:Name="VideoControlsBar" VerticalAlignment="Bottom"
+                        <Grid x:Name="VideoControlsBar" VerticalAlignment="Bottom" Visibility="Collapsed"
                               Panel.ZIndex="20" Opacity="0" IsHitTestVisible="False">
                             <!-- Só os botões capturam o mouse; o gradiente é decorativo. -->
                             <Border x:Name="VideoControlsGradient" CornerRadius="0,0,12,12" IsHitTestVisible="False" Height="70"
@@ -505,7 +505,7 @@
                     <Grid Grid.Row="1">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <!-- Margem de 2 px: o contorno de foco do card passa da borda e era cortado. -->
-                            <ItemsControl x:Name="LstFriendsSidebar" Margin="2">
+                            <ItemsControl x:Name="LstFriendsSidebar" Margin="2" Focusable="False" AutomationProperties.Name="Amigos">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <!-- Button, e não um Border com MouseLeftButtonUp: o card era a

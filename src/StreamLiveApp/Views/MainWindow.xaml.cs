@@ -78,6 +78,14 @@ namespace StreamLiveApp
         public MainWindow()
         {
             InitializeComponent();
+
+            // A barra do player aparece com o mouse. Pelo teclado, o foco chegava em botões
+            // invisíveis: ela acende quando um deles recebe foco e fica enquanto o foco estiver lá.
+            VideoControlsBar.IsKeyboardFocusWithinChanged += (s, ev) =>
+            {
+                if ((bool)ev.NewValue) ShowVideoControls();
+                else { _mouseIdleTimer.Stop(); _mouseIdleTimer.Start(); }
+            };
             DataContext = this;
 
             _mouseIdleTimer = new System.Windows.Threading.DispatcherTimer();
@@ -890,6 +898,10 @@ namespace StreamLiveApp
             // painel volta a aparecer. Sem isso, quem escondesse o painel e fechasse a ultima
             // live ficava sem caminho de volta.
             bool hasSessions = count > 0;
+
+            // Sem live os controles do player não têm o que controlar — e, só com opacidade
+            // zero, continuavam no Tab: o foco sumia em botões invisíveis.
+            VideoControlsBar.Visibility = hasSessions ? Visibility.Visible : Visibility.Collapsed;
             TopPanelHandle.Visibility = hasSessions ? Visibility.Visible : Visibility.Collapsed;
             if (hasSessions) SyncFloatingHandle(TopPanelHandle);
             else SetTopPanelOpen(true);
@@ -1214,7 +1226,8 @@ namespace StreamLiveApp
             _mouseIdleTimer.Stop();
 
             // Enquanto o mouse estiver na barra ou num dos botões flutuantes, nada some.
-            if (VideoControlsButtons.IsMouseOver || SidebarHandle.IsMouseOver || TopPanelHandle.IsMouseOver)
+            if (VideoControlsButtons.IsMouseOver || SidebarHandle.IsMouseOver || TopPanelHandle.IsMouseOver
+                || VideoControlsBar.IsKeyboardFocusWithin)
             {
                 _mouseIdleTimer.Start();
                 return;
