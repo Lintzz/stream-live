@@ -306,10 +306,24 @@ namespace StreamLiveApp
         }
 
         /// <summary>Aviso curto na barra de status, sem roubar o foco com um MessageBox.</summary>
+        private readonly System.Windows.Threading.DispatcherTimer _statusToastTimer = new() { Interval = TimeSpan.FromSeconds(6) };
+
+        /// <summary>Aviso rápido no rodapé da janela, que some sozinho.</summary>
         private void ShowTransientStatus(string message)
         {
-            StatusText.Text = message;
-            StatusText.Visibility = Visibility.Visible;
+            StatusToastText.Text = message;
+            StatusToast.Visibility = Visibility.Visible;
+
+            _statusToastTimer.Stop();
+            _statusToastTimer.Tick -= HideStatusToast;
+            _statusToastTimer.Tick += HideStatusToast;
+            _statusToastTimer.Start();
+        }
+
+        private void HideStatusToast(object? sender, EventArgs e)
+        {
+            _statusToastTimer.Stop();
+            StatusToast.Visibility = Visibility.Collapsed;
         }
 
         // ───────────────────────────── Status dos amigos ─────────────────────────────
@@ -981,7 +995,8 @@ namespace StreamLiveApp
             }
             catch (Exception ex)
             {
-                ShowTransientStatus($"Não deu para reconectar em {session.FriendName}: {ex.Message}");
+                DiagnosticLog.Error("Viewer", $"Falha ao reconectar em {session.FriendName}", ex);
+                ShowTransientStatus($"Não deu para reconectar em {session.FriendName}. Confira se a live dele ainda está no ar.");
             }
         }
 

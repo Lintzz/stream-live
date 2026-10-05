@@ -644,6 +644,16 @@
         <Grid x:Name="OverlayGrid" Grid.RowSpan="4" Background="Transparent" Visibility="Collapsed" IsHitTestVisible="False">
         </Grid>
 
+        <!-- Aviso flutuante (ShowTransientStatus). Os avisos iam para o texto da prévia da
+             transmissão, que fica escondida quase sempre — "conexão recusada" e afins nunca
+             apareciam. Some sozinho depois de alguns segundos. -->
+        <Border x:Name="StatusToast" Grid.Row="3" Panel.ZIndex="90" Visibility="Collapsed"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20,0,20,24" MaxWidth="560"
+                Background="#F026262E" BorderBrush="#4D4D57" BorderThickness="1" CornerRadius="6" Padding="14,8"
+                IsHitTestVisible="False">
+            <TextBlock x:Name="StatusToastText" Foreground="#EEEEEE" FontSize="12" TextWrapping="Wrap"/>
+        </Border>
+
         <!-- Settings Modal Overlay -->
         <!-- É uma camada dentro da janela, não uma janela: foco, Tab e Esc são cuidados à mão
              (OpenSettings/CloseSettings). TabNavigation=Cycle prende o Tab no painel. -->
