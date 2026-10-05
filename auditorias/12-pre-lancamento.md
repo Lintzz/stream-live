@@ -17,9 +17,9 @@ O que foi testado: build de produção da próxima release (publish self-contain
 - C — README: quadro de proteção atualizado para a 2.0 e aviso para atualizar junto com os amigos
 - Achado no caminho (Alto, acessibilidade) — cards de amigos sem nome para o leitor de tela com live aberta: LiveItemsControl (detalhe em 10-acessibilidade.md)
 
-## Pendente (bloqueia a release)
-- Teste de live real (roteiro abaixo) — pendências Altas de dependencias, 07-seguranca e 11-performance
-- Push + CI verde (cache do LFS e AppSmokeTests no runner nunca rodaram)
+## Pendente
+- Teste de live real (roteiro abaixo) — pendências Altas de dependencias, 07-seguranca e 11-performance. A 2.0.0 foi publicada antes dele por decisão do dono (2026-10-05); fazer o quanto antes com a versão publicada
+- Resolvido: push + CI verde (224 testes, AppSmokeTests no runner, cache do LFS)
 
 ## Pendente (não bloqueia)
 - Narrador (roteiro em 10-acessibilidade.md) · botão "Atualizar agora" só se exercita a partir da 2.0.x · 2FA no GitHub · firewall em rede pública

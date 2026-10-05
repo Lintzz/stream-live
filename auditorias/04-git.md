@@ -11,8 +11,7 @@ Chaves rotacionadas: nenhuma (nada vazou).
 - ci.yml: actions fixadas por SHA na linha v4 (checkout v4.4.0, cache v4.3.0, setup-dotnet v4.3.1)
 
 ## Pendente
-- Push dos commits locais (correção de segurança incluída) — Baixa; depois do teste de live real
-- Confirmar no primeiro push que o cache do LFS e o AppSmokeTests funcionam no runner do GitHub
+- Resolvido em 2026-10-05: push feito com a release 2.0.0; CI verde, cache do LFS criado, AppSmokeTests passou no runner
 
 ## Decidi não corrigir
 - `auditorias/` fica versionada no repositório público: hoje não há nada sensível nela. Revisar no /07-seguranca se aparecer falha ainda não corrigida
