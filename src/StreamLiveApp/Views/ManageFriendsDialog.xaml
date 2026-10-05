@@ -71,7 +71,7 @@
 
             <Grid Grid.Row="0" Margin="0,0,0,12">
                 <TextBlock Text="Gerenciar Amigos" Foreground="White" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                <Button Content="&#xE10A;" FontFamily="Segoe MDL2 Assets" FontSize="12" Width="26" Height="26"
+                <Button AutomationProperties.Name="Fechar" Content="&#xE10A;" FontFamily="Segoe MDL2 Assets" FontSize="12" Width="26" Height="26"
                         HorizontalAlignment="Right" Background="Transparent" Foreground="#AAAAAA"
                         Style="{StaticResource DialogButton}" Click="BtnClose_Click" ToolTip="Fechar"/>
             </Grid>
@@ -154,7 +154,7 @@
                                             </Binding>
                                         </TextBox.Text>
                                     </TextBox>
-                                    <Button Grid.Column="5" Content="&#xE107;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                    <Button AutomationProperties.Name="{Binding DisplayName, StringFormat='Remover {0}'}" Grid.Column="5" Content="&#xE107;" FontFamily="Segoe MDL2 Assets" FontSize="12"
                                             Width="28" Height="28" Background="#3A1F22" Foreground="#E81123"
                                             Style="{StaticResource DialogButton}" Click="BtnRemove_Click" ToolTip="Remover"/>
                                 </Grid>

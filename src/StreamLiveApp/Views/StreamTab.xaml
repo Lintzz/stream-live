@@ -112,7 +112,7 @@
             </Border>
 
             <!-- Só o fechar fica na célula: volume e mudo vivem na barra do player -->
-            <Button Content="&#xE711;" Background="#CC2929" Click="BtnClose_Click" ToolTip="Sair desta live"
+            <Button AutomationProperties.Name="{Binding FriendName, StringFormat='Sair da live de {0}'}" Content="&#xE711;" Background="#CC2929" Click="BtnClose_Click" ToolTip="Sair desta live"
                     HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8">
                 <Button.Style>
                     <Style TargetType="Button" BasedOn="{StaticResource TabIconButton}">
