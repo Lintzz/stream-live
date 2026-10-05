@@ -71,7 +71,28 @@ namespace StreamLiveApp
         }
 
         public bool IsStreaming { get; set; } = false;
-        public string RoomPassword { get; set; } = string.Empty;
+        /// <summary>
+        /// Senha da sala em uso. Autenticar vale para <em>esta</em> senha: quando ela muda —
+        /// inclusive ao encerrar a live, que a zera —, ninguém continua autenticado. Antes, um
+        /// viewer autenticado numa live seguia marcado na seguinte com outra senha e recebia
+        /// tudo cifrado com uma chave que não tinha.
+        /// </summary>
+        public string RoomPassword
+        {
+            get => _roomPassword;
+            set
+            {
+                value ??= string.Empty;
+                lock (_clientsLock)
+                {
+                    if (value == _roomPassword) return;
+                    _roomPassword = value;
+                    _authenticatedClients.Clear();
+                    _challenges.Clear();
+                }
+            }
+        }
+        private string _roomPassword = string.Empty;
 
         /// <summary>
         /// Quando ligado, só IPs da lista de amigos conseguem abrir conexão. É a proteção mais
@@ -607,6 +628,31 @@ namespace StreamLiveApp
             }
 
             ReportCongestion(congested);
+        }
+
+        /// <summary>
+        /// Avisa os viewers registrados que uma live começou. Vai em claro para quem ainda não
+        /// autenticou na senha desta live: ele já esqueceu a chave da anterior e não tem como
+        /// ler nada cifrado — sem o aviso, ficava parado em "Transmissão encerrada". O aviso
+        /// não revela nada que o STATUS_RESPONSE não diga a qualquer um; o resto da live
+        /// continua só para quem autenticar.
+        /// </summary>
+        public void BroadcastStreamStarted()
+        {
+            List<IWebSocketConnection> viewers;
+            HashSet<Guid> authenticated;
+            lock (_clientsLock)
+            {
+                viewers = _clients.Where(c => _viewers.Contains(c.ConnectionInfo.Id)).ToList();
+                authenticated = new HashSet<Guid>(_authenticatedClients);
+            }
+
+            var key = EncryptionKey;
+            foreach (var client in viewers)
+            {
+                bool canRead = key != null && authenticated.Contains(client.ConnectionInfo.Id);
+                SafeSend(client, canRead ? CryptoHelper.EncryptText("STREAM_STARTED", key!) : "STREAM_STARTED");
+            }
         }
 
         public void BroadcastMessage(string message)

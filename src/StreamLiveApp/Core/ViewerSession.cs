@@ -397,6 +397,9 @@ namespace StreamLiveApp
                 {
                     _streamEnded = true;
                     _client?.SuppressReconnect();
+                    // A chave era desta live. A próxima chega em claro (STREAM_STARTED) e, se
+                    // tiver senha, passa pelo AUTH de novo — com a senha lembrada, sem modal.
+                    _client?.DisableEncryption();
                     try { _streamManager?.Stop(); } catch { }
                     VideoBitmap = null;
                     SetHealth(ConnectionHealth.Encerrada);

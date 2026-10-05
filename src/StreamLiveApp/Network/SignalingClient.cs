@@ -81,13 +81,8 @@ namespace StreamLiveApp
                 }
                 else if (msg.MessageType == System.Net.WebSockets.WebSocketMessageType.Binary && msg.Binary != null)
                 {
-                    var data = msg.Binary;
-                    if (_encryptionKey != null)
-                    {
-                        var decrypted = CryptoHelper.TryDecryptBytes(data, _encryptionKey);
-                        if (decrypted != null) data = decrypted;
-                    }
-                    OnBinaryReceived?.Invoke(data);
+                    var data = ResolveIncomingBinary(msg.Binary, _encryptionKey);
+                    if (data != null) OnBinaryReceived?.Invoke(data);
                 }
             });
 
@@ -144,15 +139,39 @@ namespace StreamLiveApp
                 return;
             }
 
-            var plain = text;
-            if (_encryptionKey != null)
-            {
-                var decrypted = CryptoHelper.TryDecryptText(text, _encryptionKey);
-                if (decrypted != null) plain = decrypted;
-            }
-
-            OnMessageReceived?.Invoke(plain);
+            var plain = ResolveIncomingText(text, _encryptionKey);
+            if (plain != null) OnMessageReceived?.Invoke(plain);
         }
+
+        // O que o host manda em claro mesmo numa sala com senha: o handshake (vem antes de
+        // existir chave, ou recusa uma) e as respostas de status e de ping, que servem a
+        // conexões não autenticadas.
+        private static readonly HashSet<string> ClearControlTypes = new(StringComparer.Ordinal)
+        {
+            "AUTH_REQUIRED", "AUTH_OK", "AUTH_FAIL", "AUTH_LOCKED", "STATUS_RESPONSE", "PONG"
+        };
+
+        /// <summary>
+        /// Texto recebido, já decifrado; null quando deve ser descartado. Antes, o que não
+        /// decifrava seguia como dado bruto — o que anulava a autenticação do AES-GCM: alguém
+        /// no meio do caminho dentro da VPN injetava sinalização falsa numa sala com senha.
+        /// Esse atalho existia para a live seguinte sem senha chegar; agora a chave é
+        /// esquecida no STREAM_STOPPED (ViewerSession), e ele não faz mais falta.
+        /// </summary>
+        internal static string? ResolveIncomingText(string text, byte[]? key)
+        {
+            if (key == null) return text;
+
+            var decrypted = CryptoHelper.TryDecryptText(text, key);
+            if (decrypted != null) return decrypted;
+
+            var control = SignalingMessage.Deserialize(text);
+            return control?.Type != null && ClearControlTypes.Contains(control.Type) ? text : null;
+        }
+
+        /// <summary>Áudio recebido; com a chave ativa, só o que decifra. Null = descartar.</summary>
+        internal static byte[]? ResolveIncomingBinary(byte[] data, byte[]? key)
+            => key == null ? data : CryptoHelper.TryDecryptBytes(data, key);
 
         private void PingTick(object? state)
         {

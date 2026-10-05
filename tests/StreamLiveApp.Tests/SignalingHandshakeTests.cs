@@ -192,6 +192,59 @@ public class SignalingHandshakeTests : IDisposable
         Assert.Equal("AUTH_LOCKED", (await ReceiveAsync(third)).Type);
     }
 
+    private static async Task<string> ReceiveTextAsync(ClientWebSocket ws)
+    {
+        var buffer = new byte[16384];
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        var result = await ws.ReceiveAsync(buffer, cts.Token);
+        return Encoding.UTF8.GetString(buffer, 0, result.Count);
+    }
+
+    private async Task<ClientWebSocket> AuthenticatedViewerAsync()
+    {
+        var ws = await ConnectAsync();
+        await SendAsync(ws, new SignalingMessage { Type = "CLIENT_CONNECTED" });
+        var challenge = await ReceiveAsync(ws);
+        await AuthenticateAsync(ws, Password, challenge.Data!);
+        Assert.Equal("AUTH_OK", (await ReceiveAsync(ws)).Type);
+
+        // Depois do AUTH_OK o viewer repete o CLIENT_CONNECTED, cifrado — é ele que registra.
+        var key = CryptoHelper.DeriveKey(Password);
+        var hello = CryptoHelper.EncryptText(SignalingMessage.Serialize(new SignalingMessage { Type = "CLIENT_CONNECTED" }), key);
+        await ws.SendAsync(Encoding.UTF8.GetBytes(hello), WebSocketMessageType.Text, true, CancellationToken.None);
+        for (int i = 0; i < 50 && _server.ConnectedClientsCount == 0; i++) await Task.Delay(20);
+        Assert.Equal(1, _server.ConnectedClientsCount);
+        return ws;
+    }
+
+    [Fact]
+    public async Task ChangingThePasswordRequiresAuthenticatingAgain()
+    {
+        using var ws = await AuthenticatedViewerAsync();
+
+        // Live seguinte com outra senha: a autenticação era da senha anterior. Antes ela
+        // continuava valendo, e o viewer recebia tudo cifrado com uma chave que não tinha.
+        _server.RoomPassword = "outra-senha";
+        await SendAsync(ws, new SignalingMessage { Type = "CLIENT_CONNECTED" });
+
+        Assert.Equal("AUTH_REQUIRED", (await ReceiveAsync(ws)).Type);
+    }
+
+    [Fact]
+    public async Task NextLiveStartReachesTheViewerInClear()
+    {
+        using var ws = await AuthenticatedViewerAsync();
+
+        // Fim da live (a senha some) e live nova com senha: o viewer já esqueceu a chave
+        // antiga e ainda não autenticou na nova, então o aviso precisa chegar em claro —
+        // senão ele fica parado em "Transmissão encerrada" para sempre.
+        _server.RoomPassword = string.Empty;
+        _server.RoomPassword = "nova-senha";
+        _server.BroadcastStreamStarted();
+
+        Assert.Equal("STREAM_STARTED", await ReceiveTextAsync(ws));
+    }
+
     [Fact]
     public async Task OversizedMessageClosesTheConnection()
     {

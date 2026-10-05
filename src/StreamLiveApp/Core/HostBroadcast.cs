@@ -126,7 +126,7 @@ namespace StreamLiveApp
             IsPrivateLive = settings.PrivateLive;
             InvitedCount = settings.PrivateLive ? settings.InvitedIps.Count : 0;
             IsBroadcasting = true;
-            _server?.BroadcastMessage("STREAM_STARTED");
+            _server?.BroadcastStreamStarted();
         }
 
         /// <summary>
