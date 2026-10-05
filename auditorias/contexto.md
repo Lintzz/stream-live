@@ -36,8 +36,7 @@ Atualizado em: 2026-10-05
 - Logs: `%LOCALAPPDATA%\StreamLiveApp\error.log` e `audio_error.log`
 - Build (skill `/build`): `if (Test-Path publish_zip) { Remove-Item -Recurse -Force publish_zip }; .\.dotnet\dotnet.exe publish src\StreamLiveApp\StreamLiveApp.csproj -c Release -r win-x64 --self-contained true -o publish_zip; & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" build\setup.iss` → `StreamLive_Setup.exe` na raiz (copiar para builds/windows/ com a versão no nome)
 - Release: anexar um `.exe` e o `.sha256` dele: `(Get-FileHash <exe> -Algorithm SHA256).Hash.ToLower() + "  <nome do exe>" | Set-Content <exe>.sha256`
-- Versão atual: 2.0.0 · última entrega: v2.0.0, 2026-10-05, publicada no GitHub (https://github.com/Lintzz/stream-live/releases/tag/v2.0.0) por decisão do dono antes do teste de live real; builds/windows/StreamLive-Setup-2.0.0.exe (121 MB) + .sha256; CI verde no commit da release (224 testes, smoke do .exe no runner)
-- Última build de teste: 2026-10-05, builds/windows/StreamLive-Setup-2.0.0-dev-df11796.exe (121 MB) — ícone novo; Radmin aberto na bandeja, ligado sozinho e fechado junto (com confirmação); não publicada
+- Versão atual: 2.1.0 · última entrega: v2.1.0, 2026-10-05, publicada no GitHub (https://github.com/Lintzz/stream-live/releases/tag/v2.1.0); builds/windows/StreamLive-Setup-2.1.0.exe (121 MB) + .sha256; 244 testes; anterior: v2.0.0 (mesmo dia)
 - Asset da release: sempre `StreamLive_Setup.exe` + `StreamLive_Setup.exe.sha256` (nome usado por todas as releases); a cópia em builds/ leva a versão no nome
 - Versão mora em: `<Version>` do StreamLiveApp.csproj (gera AppInfo.Version e build/version.iss)
 - Dependências conferidas em: 2026-10-05 — 0 vulnerabilidades depois da subida para SIPSorcery 10.0.17 + FFmpeg 8.1.2; NAudio e Vortice atrasados
@@ -57,11 +56,11 @@ Atualizado em: 2026-10-05
 - Aviso de Radmin VPN fechada, diagnóstico embutido, modo demonstração
 - Auto-update verificado por SHA-256
 - Desde a 2.0 (ainda não lançada): protocolo de sala v2 (salt por sala, chaves separadas), bloqueio após 5 senhas erradas, descarte do que não decifra; desfazer remoção de amigo; confirmação ao fechar com amigos assistindo; validação de IP; uso completo pelo teclado e leitor de tela; vídeo com teto de 8 Mbps e encode só com público
-- Desde 2026-10-05 (2.1.0, não lançada): ícone novo; Radmin aberto sozinho na bandeja (/minimized) quando está fechado na abertura do app, e ligado (on-line) sozinho quando sobe off-line; ao fechar, confirmação com "Fechar o Radmin VPN também" (lembrada)
+- Desde a 2.1.0 (2026-10-05): ícone novo; Radmin aberto sozinho na bandeja (/minimized) quando está fechado na abertura do app, e ligado (on-line) sozinho quando sobe off-line; ao fechar, confirmação com "Fechar o Radmin VPN também" (lembrada)
 - 244 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
 
 ## Planejado, ainda não feito
-- Teste com amigo da 2.1.0: Radmin abrindo na bandeja e amigos online (ver auditorias/features/radmin-e-icone.md)
+- Teste com amigo na 2.1.0 publicada: Radmin abrindo na bandeja, ficando on-line e fechando junto (ver auditorias/features/radmin-e-icone.md)
 
 ## Radmin VPN (levantado em 2026-10-05, Radmin 2.1.1 / 2.1.4951.1 nesta máquina)
 - Serviço é `RvControlSvc` (Auto), não `RvpnService`; a GUI é `RvRvpnGui.exe`, manifest `asInvoker` (UI Automation funciona sem admin)
