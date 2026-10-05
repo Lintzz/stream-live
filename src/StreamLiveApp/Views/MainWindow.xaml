@@ -250,7 +250,7 @@
         <Grid x:Name="TitleBarGrid" Grid.Row="0" Height="32" Background="Transparent">
             <TextBlock Text="Stream Live" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="15,0,0,0" FontSize="12" FontWeight="SemiBold"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button AutomationProperties.Name="Configurações" Content="&#xE713;" FontFamily="Segoe MDL2 Assets" Width="46" Style="{StaticResource TitleBarButtonStyle}" Click="BtnSettingsModal_Click" ToolTip="Configurações"/>
+                <Button x:Name="BtnSettings" AutomationProperties.Name="Configurações" Content="&#xE713;" FontFamily="Segoe MDL2 Assets" Width="46" Style="{StaticResource TitleBarButtonStyle}" Click="BtnSettingsModal_Click" ToolTip="Configurações"/>
                 <Button AutomationProperties.Name="Minimizar" ToolTip="Minimizar" Content="&#xE921;" FontFamily="Segoe MDL2 Assets" Width="46" Style="{StaticResource TitleBarButtonStyle}" Click="BtnMinimize_Click"/>
                 <Button AutomationProperties.Name="Maximizar" ToolTip="Maximizar" Content="&#xE922;" FontFamily="Segoe MDL2 Assets" Width="46" Style="{StaticResource TitleBarButtonStyle}" Click="BtnMaximize_Click"/>
                 <Button AutomationProperties.Name="Fechar o Stream Live" ToolTip="Fechar" Content="&#xE106;" FontFamily="Segoe MDL2 Assets" Width="46" Style="{StaticResource TitleBarCloseButtonStyle}" Click="BtnClose_Click"/>
@@ -645,8 +645,12 @@
         </Grid>
 
         <!-- Settings Modal Overlay -->
+        <!-- É uma camada dentro da janela, não uma janela: foco, Tab e Esc são cuidados à mão
+             (OpenSettings/CloseSettings). TabNavigation=Cycle prende o Tab no painel. -->
         <Grid x:Name="SettingsModalOverlay" Grid.RowSpan="4" Background="#99000000" Visibility="Collapsed" Panel.ZIndex="100">
-            <Border Background="#18181E" Width="520" MaxHeight="{Binding ActualHeight, ElementName=SettingsModalOverlay}" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Border x:Name="SettingsModalPanel" KeyboardNavigation.TabNavigation="Cycle"
+                    AutomationProperties.Name="Configurações"
+                    Background="#18181E" Width="520" MaxHeight="{Binding ActualHeight, ElementName=SettingsModalOverlay}" CornerRadius="8" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Border.Effect>
                     <DropShadowEffect Color="Black" BlurRadius="20" Opacity="0.5" ShadowDepth="5"/>
                 </Border.Effect>
@@ -696,7 +700,7 @@
                         </TabControl.Resources>
                         
                         <!-- Settings Tab -->
-                        <TabItem Header="Settings" FontSize="14" FontWeight="SemiBold">
+                        <TabItem Header="Geral" FontSize="14" FontWeight="SemiBold">
                             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="10,20,10,10">
                                 <StackPanel>
                                     <CheckBox x:Name="ChkFriendsOnly" Content="Aceitar conexões somente de amigos salvos" Foreground="White" FontSize="14" IsChecked="True" Checked="ChkFriendsOnly_Changed" Unchecked="ChkFriendsOnly_Changed"/>

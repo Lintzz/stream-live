@@ -1184,6 +1184,13 @@ namespace StreamLiveApp
 
         private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
+            if (e.Key == System.Windows.Input.Key.Escape && SettingsModalOverlay.Visibility == Visibility.Visible)
+            {
+                CloseSettings();
+                e.Handled = true;
+                return;
+            }
+
             if (e.Key == System.Windows.Input.Key.Escape && WindowStyle == WindowStyle.None)
             {
                 ExitFullscreen();
@@ -1303,10 +1310,24 @@ namespace StreamLiveApp
             // trocar sozinho no meio da transmissão.
             UpdateCaptureModeText();
             SettingsModalOverlay.Visibility = Visibility.Visible;
+
+            // O foco ficava na engrenagem, atrás da camada: o Tab percorria a janela de trás
+            // e o leitor de tela nem percebia que algo tinha aberto. Leva o foco para dentro
+            // depois do layout (antes disso o painel ainda não tem nada focável).
+            Dispatcher.BeginInvoke(new Action(() =>
+                SettingsModalPanel.MoveFocus(new System.Windows.Input.TraversalRequest(
+                    System.Windows.Input.FocusNavigationDirection.First))),
+                System.Windows.Threading.DispatcherPriority.Input);
         }
 
-        private void BtnCloseSettingsModal_Click(object sender, RoutedEventArgs e)
-            => SettingsModalOverlay.Visibility = Visibility.Collapsed;
+        private void BtnCloseSettingsModal_Click(object sender, RoutedEventArgs e) => CloseSettings();
+
+        /// <summary>Fecha o painel de configurações e devolve o foco a quem o abriu.</summary>
+        private void CloseSettings()
+        {
+            SettingsModalOverlay.Visibility = Visibility.Collapsed;
+            BtnSettings.Focus();
+        }
 
         /// <summary>
         /// BelowNormal é intencional e não é mais opcional: o app cede CPU aos outros
