@@ -17,6 +17,7 @@
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <!-- Title Bar Button Style -->
         <Style x:Key="TitleBarButtonStyle" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="#AAAAAA"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -88,6 +89,7 @@
         </Style>
 
         <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
             <Setter Property="Background" Value="#2D2D35"/>
             <Setter Property="Foreground" Value="#EEEEEE"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -195,6 +197,7 @@
         
         <!-- ComboBox Basic Dark Style -->
         <Style TargetType="ComboBox">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
             <Setter Property="Background" Value="#1E1E24"/>
             <Setter Property="Foreground" Value="Black"/>
             <Setter Property="BorderBrush" Value="#6A6A75"/>
@@ -202,6 +205,7 @@
         </Style>
         <!-- Botões da barra de vídeo (estilo player: ícone limpo, indicador quando ativo) -->
         <Style x:Key="VideoBarToggle" TargetType="ToggleButton">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="#EDEDED"/>
             <Setter Property="Width" Value="40"/>
@@ -263,7 +267,7 @@
                 <TextBlock x:Name="UpdateBannerText" Text="Uma nova versão está disponível!" Foreground="White" VerticalAlignment="Center" FontWeight="SemiBold"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button x:Name="BtnUpdate" Content="Atualizar Agora" Style="{StaticResource ModernButton}" Background="#1E1E24" Margin="0,0,10,0" Padding="10,2" Click="BtnUpdate_Click"/>
-                    <Button AutomationProperties.Name="Ignorar atualização por enquanto" x:Name="BtnDismissUpdate" Content="&#xE106;" FontFamily="Segoe MDL2 Assets" Background="Transparent" Foreground="White" BorderThickness="0" Cursor="Hand" Click="BtnDismissUpdate_Click" ToolTip="Ignorar por enquanto" Margin="0,0,0,0">
+                    <Button FocusVisualStyle="{StaticResource AppFocusVisual}" AutomationProperties.Name="Ignorar atualização por enquanto" x:Name="BtnDismissUpdate" Content="&#xE106;" FontFamily="Segoe MDL2 Assets" Background="Transparent" Foreground="White" BorderThickness="0" Cursor="Hand" Click="BtnDismissUpdate_Click" ToolTip="Ignorar por enquanto" Margin="0,0,0,0">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
                                 <Border Background="Transparent" Padding="5">
@@ -318,7 +322,7 @@
                     <Button x:Name="BtnStopStream" Content="Parar" Style="{StaticResource DangerButton}"
                             Visibility="Collapsed" Margin="0,0,10,0" Click="BtnStopStream_Click"/>
 
-                    <ToggleButton AutomationProperties.Name="Ver o que está sendo transmitido" x:Name="BtnTogglePreview" Width="34" Height="30" Margin="0,0,10,0" Cursor="Hand"
+                    <ToggleButton FocusVisualStyle="{StaticResource AppFocusVisual}" AutomationProperties.Name="Ver o que está sendo transmitido" x:Name="BtnTogglePreview" Width="34" Height="30" Margin="0,0,10,0" Cursor="Hand"
                                   Background="#2D2D35" Foreground="#EEEEEE" BorderThickness="0" Visibility="Collapsed"
                                   Content="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="14"
                                   Checked="BtnTogglePreview_Changed" Unchecked="BtnTogglePreview_Changed"
@@ -625,7 +629,7 @@
                     <TextBlock x:Name="StatsText" Text="" Foreground="White" FontSize="9" FontFamily="Consolas"/>
                 </Border>
 
-                <Button AutomationProperties.Name="Fechar prévia" Content="&#xE10A;" FontFamily="Segoe MDL2 Assets" FontSize="10" Width="20" Height="20"
+                <Button FocusVisualStyle="{StaticResource AppFocusVisual}" AutomationProperties.Name="Fechar prévia" Content="&#xE10A;" FontFamily="Segoe MDL2 Assets" FontSize="10" Width="20" Height="20"
                         HorizontalAlignment="Right" VerticalAlignment="Top" Margin="6"
                         Background="#99000000" Foreground="White" BorderThickness="0" Cursor="Hand"
                         Click="BtnClosePreview_Click" ToolTip="Fechar preview">
@@ -673,7 +677,7 @@
                     <!-- Modal Header -->
                     <Grid Grid.Row="0" Margin="20,20,20,10">
                         <TextBlock Text="Configurações" Foreground="White" FontSize="18" FontWeight="SemiBold"/>
-                        <Button AutomationProperties.Name="Fechar configurações" ToolTip="Fechar" Content="&#xE106;" FontFamily="Segoe MDL2 Assets" HorizontalAlignment="Right" Foreground="#AAAAAA" Background="Transparent" BorderThickness="0" Width="30" Height="30" Cursor="Hand" Click="BtnCloseSettingsModal_Click">
+                        <Button FocusVisualStyle="{StaticResource AppFocusVisual}" AutomationProperties.Name="Fechar configurações" ToolTip="Fechar" Content="&#xE106;" FontFamily="Segoe MDL2 Assets" HorizontalAlignment="Right" Foreground="#AAAAAA" Background="Transparent" BorderThickness="0" Width="30" Height="30" Cursor="Hand" Click="BtnCloseSettingsModal_Click">
                             <Button.Template>
                                 <ControlTemplate TargetType="Button">
                                     <Border Background="{TemplateBinding Background}">
@@ -688,6 +692,7 @@
                     <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0" Margin="10,0,10,10">
                         <TabControl.Resources>
                             <Style TargetType="TabItem">
+                                <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
                                 <Setter Property="Template">
                                     <Setter.Value>
                                         <ControlTemplate TargetType="TabItem">

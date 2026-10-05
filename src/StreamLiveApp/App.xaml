@@ -16,5 +16,13 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!-- Controles sem estilo próprio pegam o mesmo foco. Estilo nomeado não herda
+             estilo implícito, então os nomeados (ModernButton, DialogButton...) repetem o Setter. -->
+        <Style TargetType="CheckBox">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
+        </Style>
+        <Style TargetType="Slider">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
+        </Style>
     </Application.Resources>
 </Application>

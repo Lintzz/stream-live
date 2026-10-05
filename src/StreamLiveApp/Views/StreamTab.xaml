@@ -7,6 +7,7 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <Style x:Key="TabIconButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
             <Setter Property="Background" Value="#99000000"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -32,6 +33,7 @@
         </Style>
 
         <Style x:Key="OverlayTextButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
             <Setter Property="Background" Value="#0078D4"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="BorderThickness" Value="0"/>
@@ -122,6 +124,10 @@
                             <DataTrigger Binding="{Binding IsMouseOver, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="True">
                                 <Setter Property="Opacity" Value="1"/>
                             </DataTrigger>
+                            <!-- Pelo teclado o mouse não está em cima: sem isto o foco caía num botão invisível. -->
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter Property="Opacity" Value="1"/>
+                            </Trigger>
                         </Style.Triggers>
                     </Style>
                 </Button.Style>

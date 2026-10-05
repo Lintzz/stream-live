@@ -30,6 +30,7 @@
         </Style>
 
         <Style x:Key="DialogButton" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
             <Setter Property="Background" Value="#2D2D35"/>
             <Setter Property="Foreground" Value="#EEEEEE"/>
             <Setter Property="BorderThickness" Value="0"/>
