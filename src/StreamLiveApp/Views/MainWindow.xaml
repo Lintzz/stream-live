@@ -525,7 +525,8 @@
                                                 <Ellipse Grid.Column="0" Width="9" Height="9" Margin="0,0,8,0"
                                                          VerticalAlignment="Center" Fill="{Binding StatusColor}"/>
                                                 <StackPanel Grid.Column="1">
-                                                    <TextBlock Text="{Binding DisplayName}" Foreground="White" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding DisplayName}" Foreground="White" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding DisplayName}"/>
                                                     <TextBlock Text="{Binding SubtitleText}" Foreground="#8A8A94" FontSize="10" TextTrimming="CharacterEllipsis"/>
                                                 </StackPanel>
                                                 <TextBlock Grid.Column="2" FontFamily="Segoe MDL2 Assets" FontSize="12"
