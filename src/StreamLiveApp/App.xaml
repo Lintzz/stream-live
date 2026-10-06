@@ -18,8 +18,45 @@
         </Style>
         <!-- Controles sem estilo próprio pegam o mesmo foco. Estilo nomeado não herda
              estilo implícito, então os nomeados (ModernButton, DialogButton...) repetem o Setter. -->
+        <!-- Caixa de marcar no tema do app. A do Windows (quadrado branco) destoava do resto
+             nos modais escuros. Borda #6A6A75 sobre o fundo dos modais passa de 3:1. -->
         <Style TargetType="CheckBox">
             <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Background="Transparent">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="box" Width="18" Height="18" CornerRadius="4" VerticalAlignment="Center"
+                                    Background="#1E1E24" BorderBrush="#6A6A75" BorderThickness="1.5">
+                                <Path x:Name="check" Data="M 3.5,9 L 7.5,13 L 14.5,5" Stroke="White" StrokeThickness="2"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                      Margin="-1.5" Visibility="Collapsed"/>
+                            </Border>
+                            <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="box" Property="BorderBrush" Value="#9A9AA4"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="box" Property="Background" Value="#0078D4"/>
+                                <Setter TargetName="box" Property="BorderBrush" Value="#0078D4"/>
+                                <Setter TargetName="check" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
         <Style TargetType="Slider">
             <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
