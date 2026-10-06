@@ -10,9 +10,16 @@ namespace StreamLiveApp
         public required CaptureSource Source { get; init; }
         public string RoomPassword { get; init; } = string.Empty;
 
-        /// <summary>Live privada: só <see cref="InvitedIps"/> enxerga que ela existe.</summary>
-        public bool PrivateLive { get; init; }
+        /// <summary>Quem pode ver a live. Vazio = pública, para todos os amigos.</summary>
         public IReadOnlyList<string> InvitedIps { get; init; } = Array.Empty<string>();
+
+        /// <summary>
+        /// Live privada: só <see cref="InvitedIps"/> enxerga que ela existe. Sai da lista, e não
+        /// de um campo à parte: era uma caixa "Live privada" no modal, e marcar privada para
+        /// depois marcar as pessoas era passo repetido — e "privada sem ninguém", um estado em
+        /// que ninguém via a live, quase sempre engano.
+        /// </summary>
+        public bool PrivateLive => InvitedIps.Count > 0;
 
         public uint ExcludedAudioProcessId { get; init; }
         public int Width { get; init; } = 1920;

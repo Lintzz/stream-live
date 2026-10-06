@@ -37,6 +37,16 @@ namespace StreamLiveApp
             new Friend { Name = "Lia",   Ip = "26.10.0.15", IsOnline = false, IsStreaming = false },
         };
 
+        /// <summary>
+        /// Duas telas fixas para o seletor de tela: os prints saem iguais em qualquer PC, sem
+        /// depender de quantos monitores tem quem grava.
+        /// </summary>
+        public static List<CaptureSource> CreateScreens() => new()
+        {
+            new CaptureSource { Title = "Tela 1", ScreenBounds = new System.Drawing.Rectangle(0, 0, 1920, 1080) },
+            new CaptureSource { Title = "Tela 2", ScreenBounds = new System.Drawing.Rectangle(1920, 0, 1920, 1080) },
+        };
+
         /// <summary>Cena de cada amigo: duas lives abertas lado a lado não podem ser iguais.</summary>
         public static DemoScene SceneFor(Friend friend) =>
             friend.Name == "Diego" ? DemoScene.Espaco : DemoScene.Corrida;
@@ -87,6 +97,10 @@ namespace StreamLiveApp
                 System.Threading.Monitor.Exit(_lock);
             }
         }
+
+        /// <summary>Um quadro avulso em BGR32 — as miniaturas do seletor de tela no --demo.</summary>
+        internal static (byte[] Pixels, int Width, int Height) RenderStill(DemoScene scene, double t) =>
+            (Render(scene, t, rgb32: true), Width, Height);
 
         private static byte[] Render(DemoScene scene, double t, bool rgb32)
         {

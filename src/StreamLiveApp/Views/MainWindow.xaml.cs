@@ -48,8 +48,8 @@ namespace StreamLiveApp
 
         // Escolhas de privacidade da última live, para pré-preencher a próxima. Ficam só em
         // memória, como a senha: nada disso é gravado em disco, então fechar o app zera.
-        private bool _lastPrivateLive;
-        private IReadOnlyList<string> _lastInvitedIps = Array.Empty<string>();
+        // Tela da live no ar (ou da última): vem marcada na próxima vez que o modal abre.
+        private CaptureSource? _selectedSource;
         private string? _downloadUrl;
         private string? _downloadChecksumUrl;
 
@@ -144,7 +144,6 @@ namespace StreamLiveApp
                 // numa gravação, e o servidor brigaria pela porta 8080 com o app de verdade.
                 Title = "Stream Live (demonstração)";
                 UpdatePlayerControlsState();
-                LoadScreens();
                 return;
             }
 
@@ -166,8 +165,6 @@ namespace StreamLiveApp
 
             LocationChanged += (s2, e2) => UpdateScreenOverlapWarning();
             SizeChanged += (s2, e2) => UpdateScreenOverlapWarning();
-
-            LoadScreens();
 
             // Por último: o aviso é modal, e só faz sentido aparecer com a janela já montada
             // e o servidor de sinalização de pé.
@@ -430,44 +427,29 @@ namespace StreamLiveApp
 
         // ───────────────────────────── Host ─────────────────────────────
 
-        private void LoadScreens()
+        /// <summary>
+        /// Troca a tela sem derrubar a live: o mesmo seletor do "Transmitir", só com as telas.
+        /// Era o ComboBox da barra que fazia isso, e ele saiu junto com a escolha de cabeça.
+        /// </summary>
+        private void BtnChangeScreen_Click(object sender, RoutedEventArgs e)
         {
-            var screens = WindowHelper.GetCapturableScreens();
-            CboWindows.ItemsSource = screens;
+            if (!_isBroadcasting) return;
 
-            // Sem isso o campo abre em branco e o usuário precisa abrir o dropdown para conseguir dar Start.
-            if (CboWindows.SelectedItem == null && screens.Count > 0)
-            {
-                CboWindows.SelectedIndex = 0;
-            }
-        }
+            var dialog = BroadcastDialog.ForChange(_selectedSource?.Title);
+            dialog.Owner = this;
+            if (dialog.ShowDialog() != true || dialog.SelectedSource == null) return;
 
-        private void CboWindows_DropDownOpened(object sender, EventArgs e)
-        {
-            var previous = CboWindows.SelectedItem as CaptureSource;
-            var screens = WindowHelper.GetCapturableScreens();
-            CboWindows.ItemsSource = screens;
-
-            if (previous != null)
-            {
-                var match = screens.FirstOrDefault(s => s.Title == previous.Title);
-                if (match != null) CboWindows.SelectedItem = match;
-            }
-
-            if (CboWindows.SelectedItem == null && screens.Count > 0)
-            {
-                CboWindows.SelectedIndex = 0;
-            }
-        }
-
-        private void CboWindows_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-        {
-            if (_isBroadcasting && CboWindows.SelectedItem is CaptureSource selectedSource)
-            {
-                _hostBroadcast?.ChangeSource(selectedSource);
-            }
-
+            _selectedSource = dialog.SelectedSource;
+            _hostBroadcast?.ChangeSource(_selectedSource);
+            UpdateChangeScreenTooltip();
             UpdateScreenOverlapWarning();
+        }
+
+        private void UpdateChangeScreenTooltip()
+        {
+            BtnChangeScreen.ToolTip = _selectedSource == null
+                ? "Escolher outra tela sem parar a live"
+                : $"Transmitindo a {_selectedSource.Title}. Clique para escolher outra sem parar a live.";
         }
 
         private void BtnTogglePreview_Changed(object sender, RoutedEventArgs e)
@@ -488,7 +470,7 @@ namespace StreamLiveApp
         {
             if (ScreenOverlapWarning == null) return;
 
-            if (!_isBroadcasting || !(CboWindows.SelectedItem is CaptureSource source))
+            if (!_isBroadcasting || !(_selectedSource is CaptureSource source))
             {
                 ScreenOverlapWarning.Visibility = Visibility.Collapsed;
                 return;
@@ -602,32 +584,27 @@ namespace StreamLiveApp
 
         private async void BtnStartStream_Click(object sender, RoutedEventArgs e)
         {
-            if (!(CboWindows.SelectedItem is CaptureSource selectedSource))
-            {
-                System.Windows.MessageBox.Show(this, "Escolha qual tela transmitir na lista ao lado do botão.",
-                    "Transmitir", MessageBoxButton.OK, MessageBoxImage.Information);
-                CboWindows.Focus();
-                return;
-            }
+            var dialog = BroadcastDialog.ForStart(_friends, _lastRoomPassword, _selectedSource?.Title);
+            dialog.Owner = this;
+            if (dialog.ShowDialog() != true || dialog.SelectedSource == null) return;
 
-            var passwordDialog = RoomPasswordDialog.ForHost(_lastRoomPassword, _friends, _lastPrivateLive, _lastInvitedIps);
-            passwordDialog.Owner = this;
-            if (passwordDialog.ShowDialog() != true) return;
-
-            _lastRoomPassword = passwordDialog.Password ?? string.Empty;
-            _lastPrivateLive = passwordDialog.IsPrivateLive;
-            _lastInvitedIps = passwordDialog.InvitedIps;
+            var selectedSource = dialog.SelectedSource;
+            _selectedSource = selectedSource;
+            _lastRoomPassword = dialog.Password ?? string.Empty;
+            var invitedIps = dialog.InvitedIps;
 
             _isBroadcasting = true;
             BtnStartStream.Visibility = Visibility.Collapsed;
             BtnStopStream.Visibility = Visibility.Visible;
+            BtnChangeScreen.Visibility = Visibility.Visible;
+            UpdateChangeScreenTooltip();
             BtnTogglePreview.Visibility = Visibility.Visible;
             ViewerCountPanel.Visibility = Visibility.Visible;
             LiveBadge.Visibility = Visibility.Visible;
-            PrivateBadge.Visibility = _lastPrivateLive ? Visibility.Visible : Visibility.Collapsed;
-            PrivateBadge.ToolTip = _lastInvitedIps.Count == 1
+            PrivateBadge.Visibility = invitedIps.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            PrivateBadge.ToolTip = invitedIps.Count == 1
                 ? "Live privada — 1 amigo convidado. Os demais veem você como offline."
-                : $"Live privada — {_lastInvitedIps.Count} amigos convidados. Os demais veem você como offline.";
+                : $"Live privada — {invitedIps.Count} amigos convidados. Os demais veem você como offline.";
             UpdateScreenOverlapWarning();
 
             // As lives abertas silenciam: o som delas voltaria para os seus viewers pelo loopback.
@@ -647,8 +624,7 @@ namespace StreamLiveApp
                 {
                     Source = selectedSource,
                     RoomPassword = _lastRoomPassword,
-                    PrivateLive = _lastPrivateLive,
-                    InvitedIps = _lastInvitedIps,
+                    InvitedIps = invitedIps,
                     ExcludedAudioProcessId = ResolveExcludedAudioPid()
                 });
             }
@@ -690,6 +666,7 @@ namespace StreamLiveApp
             BtnStartStream.Visibility = Visibility.Visible;
             BtnStartStream.IsEnabled = false;
             BtnStopStream.Visibility = Visibility.Collapsed;
+            BtnChangeScreen.Visibility = Visibility.Collapsed;
             BtnTogglePreview.Visibility = Visibility.Collapsed;
             BtnTogglePreview.IsChecked = false;
             ViewerCountPanel.Visibility = Visibility.Collapsed;

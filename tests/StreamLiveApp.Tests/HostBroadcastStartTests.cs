@@ -14,7 +14,6 @@ public class HostBroadcastStartTests
     {
         Source = new CaptureSource { Title = "Tela 1", ScreenBounds = new System.Drawing.Rectangle(0, 0, 640, 360) },
         RoomPassword = "senha-da-sala",
-        PrivateLive = privateLive,
         InvitedIps = privateLive ? new[] { "26.10.0.5" } : Array.Empty<string>()
     };
 

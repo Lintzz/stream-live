@@ -195,14 +195,6 @@
         <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#007ACC" />
         <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="White" />
         
-        <!-- ComboBox Basic Dark Style -->
-        <Style TargetType="ComboBox">
-            <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
-            <Setter Property="Background" Value="#1E1E24"/>
-            <Setter Property="Foreground" Value="Black"/>
-            <Setter Property="BorderBrush" Value="#6A6A75"/>
-            <Setter Property="Padding" Value="5"/>
-        </Style>
         <!-- Botões da barra de vídeo (estilo player: ícone limpo, indicador quando ativo) -->
         <Style x:Key="VideoBarToggle" TargetType="ToggleButton">
             <Setter Property="FocusVisualStyle" Value="{StaticResource AppFocusVisual}"/>
@@ -305,22 +297,18 @@
                         </StackPanel>
                     </Border>
 
-                    <TextBlock x:Name="LblScreen" Text="Tela:" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="0,0,8,0" FontWeight="SemiBold"/>
-                    <ComboBox x:Name="CboWindows" AutomationProperties.Name="Tela para transmitir" Width="130" Margin="0,0,10,0" DisplayMemberPath="Title"
-                              VerticalAlignment="Center" Height="30"
-                              DropDownOpened="CboWindows_DropDownOpened" SelectionChanged="CboWindows_SelectionChanged">
-                        <ComboBox.ItemContainerStyle>
-                            <Style TargetType="ComboBoxItem">
-                                <Setter Property="Background" Value="#1E1E24"/>
-                                <Setter Property="Foreground" Value="White"/>
-                            </Style>
-                        </ComboBox.ItemContainerStyle>
-                    </ComboBox>
-
                     <Button x:Name="BtnStartStream" Content="Transmitir" Style="{StaticResource PrimaryButton}"
                             Margin="0,0,10,0" Click="BtnStartStream_Click"/>
                     <Button x:Name="BtnStopStream" Content="Parar" Style="{StaticResource DangerButton}"
                             Visibility="Collapsed" Margin="0,0,10,0" Click="BtnStopStream_Click"/>
+                    <Button x:Name="BtnChangeScreen" Style="{StaticResource ModernButton}"
+                            Visibility="Collapsed" Margin="0,0,10,0" Click="BtnChangeScreen_Click"
+                            AutomationProperties.Name="Trocar tela" ToolTip="Escolher outra tela sem parar a live">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                            <TextBlock Text="Trocar tela" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
 
                     <ToggleButton FocusVisualStyle="{StaticResource AppFocusVisual}" AutomationProperties.Name="Ver o que está sendo transmitido" x:Name="BtnTogglePreview" Width="34" Height="30" Margin="0,0,10,0" Cursor="Hand"
                                   Background="#2D2D35" Foreground="#EEEEEE" BorderThickness="0" Visibility="Collapsed"
