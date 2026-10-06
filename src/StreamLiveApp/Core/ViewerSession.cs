@@ -477,7 +477,11 @@ namespace StreamLiveApp
                 Disconnect();
             };
 
-            _client.OnLatencyUpdated += (ms) => LatencyMs = ms;
+            _client.OnLatencyUpdated += (ms) =>
+            {
+                LatencyMs = ms;
+                DetailedDiagnostics.ViewerRtt(FriendName, ms);
+            };
         }
 
         /// <summary>Abre o modal de senha, no máximo um por vez.</summary>
@@ -600,7 +604,7 @@ namespace StreamLiveApp
                 try { _streamManager.Stop(); } catch { }
             }
 
-            _streamManager = new StreamManager();
+            _streamManager = new StreamManager { DiagLabel = FriendName };
             ApplyVolume();
 
             _streamManager.OnVideoFrameDecoded += (pixelData, width, height, stride) =>
@@ -725,6 +729,7 @@ namespace StreamLiveApp
         {
             if (_disposed) return;
             _disposed = true;
+            DetailedDiagnostics.Forget(FriendName);
 
             _watchdog?.Dispose();
             _watchdog = null;

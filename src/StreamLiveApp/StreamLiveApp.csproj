@@ -27,6 +27,13 @@
     <PathMap>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..'))=/_/</PathMap>
   </PropertyGroup>
 
+  <!-- Build de diagnóstico só para a máquina do dono: liga o DetailedDiagnostics (log
+       segundo a segundo da live). Nunca entra no instalador publicado — o /build não passa
+       esta propriedade. Uso: dotnet publish ... -p:DiagDetalhado=true -->
+  <PropertyGroup Condition="'$(DiagDetalhado)' == 'true'">
+    <DefineConstants>$(DefineConstants);DIAG_DETALHADO</DefineConstants>
+  </PropertyGroup>
+
   <!-- Regras de captura que valem a pena testar sem serem API pública do app. -->
   <ItemGroup>
     <InternalsVisibleTo Include="StreamLiveApp.Tests" />

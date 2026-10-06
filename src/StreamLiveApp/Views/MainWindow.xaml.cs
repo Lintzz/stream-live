@@ -143,6 +143,12 @@ namespace StreamLiveApp
             UpdateSidebarEmptyStates();
 
             VersionText.Text = "Versão " + AppInfo.Version;
+#if DIAG_DETALHADO
+            // Build de diagnóstico do dono (ver DetailedDiagnostics): a versão diz qual instalador
+            // está rodando, para não confundir com a pública de mesmo número.
+            VersionText.Text += " · diagnóstico detalhado (F8 marca o momento)";
+#endif
+            DetailedDiagnostics.Start();
 
             if (DemoMode.IsEnabled)
             {
@@ -1261,6 +1267,17 @@ namespace StreamLiveApp
 
         private void Window_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
+#if DIAG_DETALHADO
+            // F8 marca a travadinha no diagnóstico detalhado, na hora em que ela acontece.
+            if (e.Key == System.Windows.Input.Key.F8)
+            {
+                var stamp = DateTime.Now.ToString("HH:mm:ss");
+                DetailedDiagnostics.Mark($"F8 apertado às {stamp}");
+                ShowTransientStatus($"Marcado às {stamp} no diagnóstico detalhado");
+                e.Handled = true;
+                return;
+            }
+#endif
             if (e.Key == System.Windows.Input.Key.Escape && SettingsModalOverlay.Visibility == Visibility.Visible)
             {
                 CloseSettings();

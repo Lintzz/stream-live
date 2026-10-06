@@ -220,6 +220,15 @@ namespace StreamLiveApp
             }
         }
 
+        /// <summary>
+        /// Nome da live no diagnóstico detalhado: o apelido do amigo, para várias lives em grade
+        /// não se misturarem no mesmo contador. Só usado com DIAG_DETALHADO.
+        /// </summary>
+        public string DiagLabel { get; set; } = "host";
+
+        // Motivo do próximo IDR, para o diagnóstico detalhado dizer por que cada keyframe saiu.
+        private string? _pendingIdrReason;
+
         public StreamManager()
         {
             EnsureMediaInitialized();
@@ -259,6 +268,7 @@ namespace StreamLiveApp
             {
                 OnLocalVideoFrameReady?.Invoke(sample, width, height, width * VideoCapturer.BytesPerPixel);
                 System.Threading.Interlocked.Increment(ref _statsCapturedFrames);
+                DetailedDiagnostics.HostCaptured(DiagLabel);
 
                 // Sem ninguém conectado o quadro só serve à prévia: codificar custava mais de um
                 // núcleo numa live sem público. Quem entra ganha uma rajada de keyframes ao
@@ -267,6 +277,7 @@ namespace StreamLiveApp
 
                 if (System.Threading.Interlocked.CompareExchange(ref _isEncoding, 1, 0) != 0)
                 {
+                    DetailedDiagnostics.HostSkippedBusy(DiagLabel);
                     return; // Skip encoding if previous frame is still processing
                 }
 
@@ -275,6 +286,8 @@ namespace StreamLiveApp
                     try
                     {
                         byte[]? encoded = null;
+                        string? idrReason = null;
+                        long encodeStart = Stopwatch.GetTimestamp();
                         lock (_encoderLock)
                         {
                             if (_videoEncoder != null)
@@ -284,9 +297,12 @@ namespace StreamLiveApp
                                     var now = _keyFrameClock.Elapsed;
                                     if (ShouldForcePeriodicKeyFrame(now, _lastKeyFrame, _burstUntil))
                                     {
+                                        _pendingIdrReason ??= now <= _burstUntil ? "entrada" : "periodico";
                                         _lastKeyFrame = now;
                                         ForceIdr(_videoEncoder);
                                     }
+                                    idrReason = _pendingIdrReason;
+                                    _pendingIdrReason = null;
                                     if (_videoEncoder is FFmpegVideoEncoder ffmpegEncoder) PrepareEncoder(ffmpegEncoder, width, height);
                                     encoded = _videoEncoder.EncodeVideo(width, height, sample, format, VideoCodecsEnum.H264);
                                 }
@@ -309,6 +325,8 @@ namespace StreamLiveApp
                         {
                             System.Threading.Interlocked.Increment(ref _statsEncodedFrames);
                             System.Threading.Interlocked.Add(ref _statsEncodedBytes, encoded.Length);
+                            DetailedDiagnostics.HostEncoded(DiagLabel, encoded.Length,
+                                (Stopwatch.GetTimestamp() - encodeStart) * 1000.0 / Stopwatch.Frequency, idrReason);
 
                             foreach (var pc in SnapshotConnectedPeers())
                             {
@@ -450,6 +468,7 @@ namespace StreamLiveApp
             {
                 provider.AddSamples(data, 1, data.Length - 1);
                 System.Threading.Interlocked.Increment(ref _audioFramesDecoded);
+                DetailedDiagnostics.ViewerAudio(DiagLabel);
             }
             catch (Exception ex)
             {
@@ -610,6 +629,7 @@ namespace StreamLiveApp
 
             lock (_encoderLock)
             {
+                _pendingIdrReason = "entrada";
                 try { ForceIdr(_videoEncoder); } catch { }
             }
             _lastKeyFrame = now;
@@ -623,12 +643,18 @@ namespace StreamLiveApp
         private void ServeKeyFrameRequest()
         {
             var now = _keyFrameClock.Elapsed;
-            if (_lastForcedKeyFrame != TimeSpan.MinValue && now - _lastForcedKeyFrame < MinForcedKeyFrameGap) return;
+            if (_lastForcedKeyFrame != TimeSpan.MinValue && now - _lastForcedKeyFrame < MinForcedKeyFrameGap)
+            {
+                DetailedDiagnostics.HostKeyFrameRequest(DiagLabel, served: false);
+                return;
+            }
 
+            DetailedDiagnostics.HostKeyFrameRequest(DiagLabel, served: true);
             _lastForcedKeyFrame = now;
             _lastKeyFrame = now;
             lock (_encoderLock)
             {
+                _pendingIdrReason = "pedido do viewer";
                 try { ForceIdr(_videoEncoder); } catch { }
             }
         }
@@ -744,6 +770,12 @@ namespace StreamLiveApp
             // Client creates a single connection (to the host)
             await CreatePeerConnection("host");
 
+            DetailedDiagnostics.SetSampler(DiagLabel, false, () =>
+            {
+                var buffered = _waveProvider?.BufferedDuration;
+                return buffered == null ? "bufAudio=-" : $"bufAudio={(int)buffered.Value.TotalMilliseconds}ms";
+            });
+
             // Enquanto chegar video sem nada decodificar, insiste no pedido de keyframe.
             _keyFrameRequestTimer = new System.Threading.Timer(_ =>
             {
@@ -791,8 +823,13 @@ namespace StreamLiveApp
             // Mesmo piso do lado do host: um viewer em rede ruim não pode virar uma metralhadora
             // de pedidos, porque cada IDR atendido custa banda para todo mundo na live.
             var now = _keyFrameClock.Elapsed;
-            if (_lastKeyFrameRequest != TimeSpan.MinValue && now - _lastKeyFrameRequest < MinForcedKeyFrameGap) return;
+            if (_lastKeyFrameRequest != TimeSpan.MinValue && now - _lastKeyFrameRequest < MinForcedKeyFrameGap)
+            {
+                DetailedDiagnostics.ViewerKeyFrameRequest(DiagLabel, sent: false);
+                return;
+            }
             _lastKeyFrameRequest = now;
+            DetailedDiagnostics.ViewerKeyFrameRequest(DiagLabel, sent: true);
 
             var request = new SignalingMessage { Type = "REQUEST_KEYFRAME", SenderId = "client" };
             OnLocalSdpReady?.Invoke("host", SignalingMessage.Serialize(request));
@@ -806,6 +843,7 @@ namespace StreamLiveApp
             {
                 _holdingForKeyFrame = true;
                 _holdSince = _keyFrameClock.Elapsed;
+                DetailedDiagnostics.ViewerHold(DiagLabel, true);
             }
             RequestKeyFrame();
         }
@@ -886,6 +924,28 @@ namespace StreamLiveApp
         }
 
         private readonly Dictionary<string, PeerIceLog> _iceLogs = new Dictionary<string, PeerIceLog>();
+
+        /// <summary>
+        /// Por qual par de endereços o ICE fechou — a pergunta que o log normal não respondia
+        /// quando a live travava: Radmin, rede local, IPv6 público ou Teredo.
+        /// </summary>
+        private static string DescribeNominatedPair(RTCPeerConnection pc)
+        {
+            try
+            {
+                var entry = pc.GetRtpChannel()?.NominatedEntry;
+                if (entry == null) return "caminho escolhido: (ainda sem par nomeado)";
+                var local = entry.LocalCandidate;
+                var remote = entry.RemoteCandidate;
+                return $"caminho escolhido: {DetailedDiagnostics.ClassifyAddress(remote?.address)} | " +
+                       $"local {local?.type} {local?.protocol} {FormatEndpoint(local?.address, (local?.port ?? 0).ToString())} → " +
+                       $"remoto {remote?.type} {remote?.protocol} {FormatEndpoint(remote?.address, (remote?.port ?? 0).ToString())}";
+            }
+            catch (Exception ex)
+            {
+                return "caminho escolhido: não deu para ler (" + ex.Message + ")";
+            }
+        }
 
         private PeerIceLog TrackIce(string clientId)
         {
@@ -989,8 +1049,17 @@ namespace StreamLiveApp
 
                         // Atrasado ou repetido: o depacketizador ordena dentro do quadro, e
                         // mover o esperado para trás contaria o resto do fluxo como perda.
-                        if (delta < 0) return;
+                        if (delta < 0)
+                        {
+                            DetailedDiagnostics.ViewerPacket(DiagLabel, packet.Payload?.Length ?? 0, 0, late: true);
+                            return;
+                        }
                         if (delta > 0) OnVideoPacketsLost(delta);
+                        DetailedDiagnostics.ViewerPacket(DiagLabel, packet.Payload?.Length ?? 0, Math.Max(delta, 0), late: false);
+                    }
+                    else
+                    {
+                        DetailedDiagnostics.ViewerPacket(DiagLabel, packet.Payload?.Length ?? 0, 0, late: false);
                     }
                     expectedSeq = (ushort)(seq + 1);
                 };
@@ -1008,11 +1077,14 @@ namespace StreamLiveApp
                     // O quadro ainda vai ao decoder durante a retenção — ele precisa seguir o
                     // fluxo —, só não vai para a tela. O teto de tempo existe para o caso de o
                     // keyframe nunca vir: aí volta a mostrar o que houver, como antes.
+                    DetailedDiagnostics.ViewerFrame(DiagLabel, payload.Length, ContainsIdrSlice(payload));
+
                     bool segurando = _holdingForKeyFrame;
                     if (segurando && (ContainsIdrSlice(payload) || _keyFrameClock.Elapsed - _holdSince > MaxLossHold))
                     {
                         _holdingForKeyFrame = false;
                         segurando = false;
+                        DetailedDiagnostics.ViewerHold(DiagLabel, false);
                     }
 
                     List<SIPSorceryMedia.Abstractions.VideoSample>? samples = null;
@@ -1020,6 +1092,7 @@ namespace StreamLiveApp
                     {
                         if (_videoEncoder != null)
                         {
+                            long decodeStart = Stopwatch.GetTimestamp();
                             try
                             {
                                 samples = _videoEncoder.DecodeVideo(payload, VideoPixelFormatsEnum.Bgr, VideoCodecsEnum.H264).ToList();
@@ -1028,6 +1101,8 @@ namespace StreamLiveApp
                             {
                                 OnConnectionStateChanged?.Invoke($"Decode Error: {ex.Message}");
                             }
+                            DetailedDiagnostics.ViewerDecoded(DiagLabel,
+                                (Stopwatch.GetTimestamp() - decodeStart) * 1000.0 / Stopwatch.Frequency, samples != null);
                         }
                     }
                     if (!segurando && samples != null && samples.Any())
@@ -1038,6 +1113,7 @@ namespace StreamLiveApp
                             _videoDecodedEver = true;
                             System.Threading.Interlocked.Increment(ref _statsDecodedFrames);
                             OnVideoFrameDecoded?.Invoke(sample.Sample, (int)sample.Width, (int)sample.Height, (int)(sample.Width * 3));
+                            DetailedDiagnostics.ViewerShown(DiagLabel);
                         }
                     }
                 };
@@ -1075,6 +1151,9 @@ namespace StreamLiveApp
                 // O desfecho é o momento certo para despejar os candidatos: aqui os dois lados
                 // já trocaram tudo que tinham. Antes disso a lista sai pela metade, e a cada
                 // evento sairia repetida — o laço de recuperação refaz este peer a cada 18s.
+                if (state == RTCPeerConnectionState.connected)
+                    DetailedDiagnostics.Event(DiagLabel, $"peer {clientId}: {DescribeNominatedPair(pc)}");
+
                 if (state == RTCPeerConnectionState.connected || state == RTCPeerConnectionState.failed)
                 {
                     iceLog.Flush(IceCategory, clientId);
