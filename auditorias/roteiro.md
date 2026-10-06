@@ -2,7 +2,7 @@
 Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · Atualizado em: 2026-10-06
 
 ## Próximo
-- [ ] Registrar no log o caminho de rede da live (ICE) e investigar as travadinhas do início — `/nova-feature`
+- [ ] Live com a build de diagnóstico, apertando F8 nas travadinhas; mandar o diagnostico-detalhado.log para análise
 
 ## Depois
 - [ ] `/14-revisao-geral` de novo, depois da release, para fechar em 🟢

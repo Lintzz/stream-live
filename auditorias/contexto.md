@@ -64,7 +64,7 @@ Atualizado em: 2026-10-06
 - 280 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
 
 ## Planejado, ainda não feito
-- Investigar travadinhas no início das lives (perda de pacote de vídeo, ver Decisões 2026-10-06): registrar no log o caminho de rede escolhido pelo ICE; depois, conforme o resultado, espaçar a rajada do keyframe ou baixar o teto
+- Travadinhas no início das lives: dono instala builds/windows/StreamLive-Setup-2.3.0-diag-b0d92a8.exe (log detalhado, F8 marca) e manda o diagnostico-detalhado.log da próxima live com travadinha; depois, conforme o resultado, prender o vídeo na Radmin, espaçar a rajada do keyframe ou baixar o teto
 
 ## Radmin VPN (levantado em 2026-10-05, Radmin 2.1.1 / 2.1.4951.1 nesta máquina)
 - Serviço é `RvControlSvc` (Auto), não `RvpnService`; a GUI é `RvRvpnGui.exe`, manifest `asInvoker` (UI Automation funciona sem admin)
@@ -76,6 +76,7 @@ Atualizado em: 2026-10-06
 - O IP 26.x é da conta, não da rede: adaptador "Radmin VPN" com 26.x prova que o Radmin está ligado, não que você está numa rede específica
 
 ## Decisões
+- 2026-10-06: log detalhado só na build de diagnóstico (-p:DiagDetalhado=true), a pedido do dono — instalador público não grava. No teste local (live para 127.0.0.1) o ICE escolheu IPv6 público, não a Radmin: o vídeo da live com a amiga provavelmente também saiu pela internet, e o ping exibido (sinalização, pela Radmin) não mede esse caminho
 - 2026-10-06: live real com amiga feita pelo dono (2.2.0/2.3.0) — tudo funcionando. Travadinhas nos primeiros ~15 min: o log do viewer mostrou 30–500 pacotes de vídeo perdidos a cada 10 s (13:30–13:37), quase zero depois. Perda contada por sequência RTP = rede entre as máquinas, não CPU da host; cada perda congela o quadro até o keyframe pedido. O caminho escolhido pelo ICE (Radmin 26.x, IPv6 público ou Teredo 2001:0::) não é registrado — primeira coisa a resolver
 - Áudio em PCM pelo WebSocket, não Opus — o Opus (v1.0.18–21) nunca funcionou em campo (detalhe no CLAUDE.md)
 - Discord sempre excluído do áudio; "Modo leve" e toggle GDI removidos (fixos)

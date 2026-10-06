@@ -28,6 +28,14 @@ O SDK fica em `.dotnet/` (fora do versionamento). Num clone novo essa pasta não
 if (Test-Path "publish_zip") { Remove-Item -Recurse -Force "publish_zip" } ; & ".\.dotnet\dotnet.exe" publish src\StreamLiveApp\StreamLiveApp.csproj -c Release -r win-x64 --self-contained true -o "publish_zip" ; & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" build\setup.iss
 ```
 
+**Build de diagnóstico (só para a máquina do dono):** o mesmo publish com
+`-p:DiagDetalhado=true` liga o `DetailedDiagnostics` — `diagnostico-detalhado.log` com uma linha
+por segundo por live, o caminho de rede escolhido pelo ICE, cada congelamento acima de 250 ms
+com o motivo provável e F8 gravando uma marca. Os pontos de entrada são `[Conditional]`: sem a
+propriedade, o compilador apaga as chamadas, e o instalador publicado não grava nada disso
+(`DetailedDiagnosticsTests.PublicBuildDoesNotCompileItIn`). Mesma versão da pública: não
+dispara o auto-update e é substituída pela próxima release. Nunca publique essa build.
+
 **Modo demonstração (`--demo`, `DemoMode`):** amigos fictícios, lives desenhadas pelo app, sem
 servidor na 8080 e sem gravar `friends.json`/`settings.json`. É o que gera o GIF e os prints de
 `docs/images/` — regrave por ele quando a UI mudar, nunca com a lista de amigos real.
