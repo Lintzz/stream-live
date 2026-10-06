@@ -110,6 +110,30 @@ namespace StreamLiveApp
             };
             // A miniatura só existe com o modal aberto: fechou, a captura para.
             Closed += (s, e) => _thumbnailTimer.Stop();
+            ContentRendered += (s, e) => KeepInsideScreen();
+        }
+
+        /// <summary>
+        /// Centralizado numa janela pequena (ou perto da borda), o modal vazava para fora da
+        /// tela — e o Transmitir ficava embaixo da barra de tarefas. Puxa para dentro da área
+        /// útil do monitor em que ele abriu.
+        /// </summary>
+        private void KeepInsideScreen()
+        {
+            var source = PresentationSource.FromVisual(this);
+            if (source?.CompositionTarget == null) return;
+
+            var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            var area = System.Windows.Forms.Screen.FromHandle(handle).WorkingArea;
+            // A área vem em pixels físicos; Left/Top da janela são em unidades do WPF.
+            var toDip = source.CompositionTarget.TransformFromDevice;
+            var topLeft = toDip.Transform(new System.Windows.Point(area.Left, area.Top));
+            var bottomRight = toDip.Transform(new System.Windows.Point(area.Right, area.Bottom));
+
+            var position = WindowHelper.ClampToArea(
+                new Rect(Left, Top, ActualWidth, ActualHeight), new Rect(topLeft, bottomRight));
+            Left = position.X;
+            Top = position.Y;
         }
 
         /// <summary>Iniciar a live: telas, quem pode ver e senha.</summary>

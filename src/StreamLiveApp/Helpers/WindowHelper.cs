@@ -68,6 +68,30 @@ namespace StreamLiveApp
         }
 
         /// <summary>
+        /// Tamanho da janela na abertura: o pedido, sem passar da área útil da tela (com 20 de
+        /// folga). Em notebook 1366×768 o 1200×760 não cabe em altura e abriria cortado.
+        /// </summary>
+        internal static System.Windows.Size FitToWorkArea(System.Windows.Size desired, System.Windows.Rect workArea)
+        {
+            const double margin = 20;
+            return new System.Windows.Size(
+                Math.Min(desired.Width, Math.Max(0, workArea.Width - margin)),
+                Math.Min(desired.Height, Math.Max(0, workArea.Height - margin)));
+        }
+
+        /// <summary>
+        /// Canto de cima à esquerda para uma janela não passar da área útil. Se ela é maior que
+        /// a área, encosta no canto de cima/esquerdo — o título e os primeiros controles ficam
+        /// à vista, e o resto rola ou se alcança pelo teclado.
+        /// </summary>
+        internal static System.Windows.Point ClampToArea(System.Windows.Rect window, System.Windows.Rect area)
+        {
+            double left = Math.Max(area.Left, Math.Min(window.Left, area.Right - window.Width));
+            double top = Math.Max(area.Top, Math.Min(window.Top, area.Bottom - window.Height));
+            return new System.Windows.Point(left, top);
+        }
+
+        /// <summary>
         /// Tamanho da miniatura que cabe em <paramref name="maxWidth"/> × <paramref name="maxHeight"/>
         /// sem distorcer a tela (monitor em pé, ultrawide).
         /// </summary>

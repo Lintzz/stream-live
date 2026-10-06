@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:StreamLiveApp"
-        Title="Stream Live" Height="550" Width="900" MinHeight="420" MinWidth="620"
+        Title="Stream Live" Height="760" Width="1200" MinHeight="420" MinWidth="620"
         Background="#0F0F13"
         WindowStartupLocation="CenterScreen"
         MouseLeftButtonDown="Window_MouseLeftButtonDown"
@@ -246,6 +246,34 @@
         <Grid x:Name="TitleBarGrid" Grid.Row="0" Height="32" Background="Transparent">
             <TextBlock Text="Stream Live" Foreground="#AAAAAA" VerticalAlignment="Center" Margin="15,0,0,0" FontSize="12" FontWeight="SemiBold"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <!-- Sua live no ar, visível mesmo com a lista de amigos recolhida (ela recolhe
+                     sozinha ao abrir a live de um amigo, e o card de transmitir vai junto). -->
+                <Button x:Name="LiveTitlePill" Visibility="Collapsed" Margin="0,0,8,0" VerticalAlignment="Center"
+                        WindowChrome.IsHitTestVisibleInChrome="True" Cursor="Hand"
+                        FocusVisualStyle="{StaticResource AppFocusVisual}" Click="LiveTitlePill_Click"
+                        AutomationProperties.Name="Ao vivo. Mostrar amigos" ToolTip="Sua live está no ar. Clique para ver o card de transmissão">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="pill" Background="#33E53935" BorderBrush="#E53935" BorderThickness="1"
+                                    CornerRadius="10" Padding="8,2">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="7" Height="7" Fill="#FF5252" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <ContentPresenter VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="pill" Property="Background" Value="#55E53935"/>
+                                </Trigger>
+                                <!-- Aviso de saúde: a live está no ar mas não chega em ninguém. -->
+                                <Trigger Property="Tag" Value="alerta">
+                                    <Setter TargetName="pill" Property="Background" Value="#E53935"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <TextBlock x:Name="LiveTitlePillText" Text="AO VIVO" Foreground="#FFD0CC" FontWeight="Bold" FontSize="11"/>
+                </Button>
                 <Button x:Name="BtnSettings" AutomationProperties.Name="Configurações" Content="&#xE713;" FontFamily="Segoe MDL2 Assets" Width="46" Style="{StaticResource TitleBarButtonStyle}" Click="BtnSettingsModal_Click" ToolTip="Configurações"/>
                 <Button AutomationProperties.Name="Minimizar" ToolTip="Minimizar" Content="&#xE921;" FontFamily="Segoe MDL2 Assets" Width="46" Style="{StaticResource TitleBarButtonStyle}" Click="BtnMinimize_Click"/>
                 <Button AutomationProperties.Name="Maximizar" ToolTip="Maximizar" Content="&#xE922;" FontFamily="Segoe MDL2 Assets" Width="46" Style="{StaticResource TitleBarButtonStyle}" Click="BtnMaximize_Click"/>
@@ -273,100 +301,8 @@
         </Border>
 
         <!-- Top Panel (Controls) -->
-        <Border x:Name="TopPanel" Grid.Row="2" Margin="15,10,15,15" Background="#18181E" CornerRadius="8" Padding="15">
-            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center">
-
-                <!-- Estado da sua transmissão: vive junto com as lives que você assiste -->
-                <StackPanel Orientation="Horizontal" Margin="0,3,0,3">
-                    <Border x:Name="LiveBadge" Background="#33E53935" BorderBrush="#E53935" BorderThickness="1"
-                            CornerRadius="4" Padding="8,3" Margin="0,0,12,0" VerticalAlignment="Center"
-                            Visibility="Collapsed">
-                        <StackPanel Orientation="Horizontal">
-                            <Ellipse Width="8" Height="8" Fill="#FF5252" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <TextBlock Text="AO VIVO" Foreground="#FF8A80" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
-
-                    <Border x:Name="PrivateBadge" Background="#33E8A33D" BorderBrush="#E8A33D" BorderThickness="1"
-                            CornerRadius="4" Padding="8,3" Margin="0,0,12,0" VerticalAlignment="Center"
-                            Visibility="Collapsed">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" Foreground="#E8A33D" FontSize="11"
-                                       VerticalAlignment="Center" Margin="0,0,6,0"/>
-                            <TextBlock Text="PRIVADA" Foreground="#E8A33D" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
-
-                    <Button x:Name="BtnStartStream" Content="Transmitir" Style="{StaticResource PrimaryButton}"
-                            Margin="0,0,10,0" Click="BtnStartStream_Click"/>
-                    <Button x:Name="BtnStopStream" Content="Parar" Style="{StaticResource DangerButton}"
-                            Visibility="Collapsed" Margin="0,0,10,0" Click="BtnStopStream_Click"/>
-                    <Button x:Name="BtnChangeScreen" Style="{StaticResource ModernButton}"
-                            Visibility="Collapsed" Margin="0,0,10,0" Click="BtnChangeScreen_Click"
-                            AutomationProperties.Name="Trocar tela" ToolTip="Escolher outra tela sem parar a live">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" Margin="0,0,7,0"/>
-                            <TextBlock Text="Trocar tela" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-
-                    <ToggleButton FocusVisualStyle="{StaticResource AppFocusVisual}" AutomationProperties.Name="Ver o que está sendo transmitido" x:Name="BtnTogglePreview" Width="34" Height="30" Margin="0,0,10,0" Cursor="Hand"
-                                  Background="#2D2D35" Foreground="#EEEEEE" BorderThickness="0" Visibility="Collapsed"
-                                  Content="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="14"
-                                  Checked="BtnTogglePreview_Changed" Unchecked="BtnTogglePreview_Changed"
-                                  ToolTip="Ver o que está sendo transmitido">
-                        <ToggleButton.Template>
-                            <ControlTemplate TargetType="ToggleButton">
-                                <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6">
-                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <ControlTemplate.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter TargetName="border" Property="Background" Value="#3D3D45"/>
-                                    </Trigger>
-                                    <Trigger Property="IsChecked" Value="True">
-                                        <Setter TargetName="border" Property="Background" Value="#0078D4"/>
-                                    </Trigger>
-                                </ControlTemplate.Triggers>
-                            </ControlTemplate>
-                        </ToggleButton.Template>
-                    </ToggleButton>
-
-                    <StackPanel x:Name="ViewerCountPanel" Orientation="Horizontal" VerticalAlignment="Center"
-                                Margin="0,0,10,0" Visibility="Collapsed"
-                                Background="Transparent" ToolTipService.InitialShowDelay="200" ToolTipService.ShowDuration="30000">
-                        <TextBlock Text="&#xE77B;" FontFamily="Segoe MDL2 Assets" Foreground="#0094F2" FontSize="14" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <TextBlock x:Name="ViewerCountText" Text="0 assistindo" Foreground="White" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    </StackPanel>
-
-
-                </StackPanel>
-
-                <Border x:Name="ScreenOverlapWarning" Background="#33FFBB00" BorderBrush="#FFBB00" BorderThickness="1"
-                        CornerRadius="4" Padding="7,3" VerticalAlignment="Center" Visibility="Collapsed"
-                        ToolTip="As lives que você assiste aparecem na sua transmissão. Mova a janela para outra tela ou escolha outra tela para transmitir.">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" Foreground="#FFBB00" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <TextBlock Text="Esta janela está na tela transmitida" Foreground="#FFD54F" FontSize="11" VerticalAlignment="Center"/>
-                    </StackPanel>
-                    </Border>
-
-                <!-- A live está no ar mas não chega em ninguém. Fica aqui, e não no StatusText
-                     do preview, porque aquele texto é escondido a cada quadro local recebido —
-                     e o quadro local continua chegando justamente nos casos em que nada sai. -->
-                <Border x:Name="BroadcastHealthWarning" Background="#33E53935" BorderBrush="#E53935" BorderThickness="1"
-                        CornerRadius="4" Padding="7,3" VerticalAlignment="Center" Visibility="Collapsed" Margin="10,0,0,0">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" Foreground="#E53935" FontSize="12" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <TextBlock x:Name="BroadcastHealthWarningText" Text="" Foreground="#FF8A80" FontSize="11" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Border>
-
-            </WrapPanel>
-        </Border>
-
         <!-- Modo Assistir: sidebar de amigos + uma ou mais lives -->
-        <Grid x:Name="ViewerArea" Grid.Row="3" Margin="15,0,15,15">
+        <Grid x:Name="ViewerArea" Grid.Row="3" Margin="15,10,15,15">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition x:Name="SidebarColumn" Width="230"/>
                 <ColumnDefinition Width="*"/>
@@ -426,30 +362,6 @@
                                Foreground="#D8D8DE" HorizontalAlignment="Center"/>
                 </Button>
 
-                <!-- Botão do painel de transmitir: mesmo gesto do botão de amigos, só que na borda de cima -->
-                <Button x:Name="TopPanelHandle" HorizontalAlignment="Center" VerticalAlignment="Top"
-                        Panel.ZIndex="21" Opacity="0" IsHitTestVisible="False" Visibility="Collapsed"
-                        Background="#D91E1E24" BorderBrush="#4D4D57" BorderThickness="1,0,1,1"
-                        Padding="16,4" Cursor="Hand" ToolTip="Esconder controles de transmissão" AutomationProperties.Name="Esconder controles de transmissão"
-                        FocusVisualStyle="{StaticResource AppFocusVisual}"
-                        GotKeyboardFocus="FloatingHandle_GotKeyboardFocus" Click="TopPanelHandle_Click">
-                    <Button.Template>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="0,0,6,6"
-                                    Padding="{TemplateBinding Padding}">
-                                <ContentPresenter/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="bg" Property="Background" Value="#F22D2D35"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Button.Template>
-                    <TextBlock x:Name="TopPanelHandleArrow" Text="&#xE70E;" FontFamily="Segoe MDL2 Assets" FontSize="11"
-                               Foreground="#D8D8DE" VerticalAlignment="Center"/>
-                </Button>
 
                         <!-- Controles do player: somem sozinhos e voltam quando o mouse passa -->
                         <Grid x:Name="VideoControlsBar" VerticalAlignment="Bottom" Visibility="Collapsed"
@@ -501,6 +413,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
@@ -598,6 +511,119 @@
                     <Button Grid.Row="2" x:Name="BtnManageFriends" Content="Gerenciar amigos"
                             FontSize="12" Padding="8,6" Margin="0,8,0,0"
                             Style="{StaticResource ModernButton}" Click="BtnManageFriends_Click"/>
+
+                    <!-- Card de transmitir, como o painel do canto do Discord. Era uma faixa no topo
+                         da janela que ocupava ~70 px o tempo todo só com o botão Transmitir, e quem
+                         abria só para assistir precisava escondê-la. Cada peça liga e desliga a
+                         própria visibilidade; as margens ficam nas peças, não nos contêineres, para
+                         o card não sobrar espaço vazio quando está parado. -->
+                    <Border Grid.Row="3" x:Name="BroadcastCard" Background="#1E1E24" CornerRadius="6"
+                            Padding="10" Margin="0,8,0,0">
+                        <StackPanel>
+                            <Button x:Name="BtnStartStream" Style="{StaticResource PrimaryButton}"
+                                    HorizontalAlignment="Stretch" Padding="10,7" Click="BtnStartStream_Click"
+                                    AutomationProperties.Name="Transmitir" ToolTipService.ShowOnDisabled="True">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Transmitir" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <WrapPanel>
+                                <Border x:Name="LiveBadge" Background="#33E53935" BorderBrush="#E53935" BorderThickness="1"
+                                        CornerRadius="4" Padding="8,3" Margin="0,0,6,0" VerticalAlignment="Center"
+                                        Visibility="Collapsed">
+                                    <StackPanel Orientation="Horizontal">
+                                        <Ellipse Width="8" Height="8" Fill="#FF5252" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="AO VIVO" Foreground="#FF8A80" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border x:Name="PrivateBadge" Background="#33E8A33D" BorderBrush="#E8A33D" BorderThickness="1"
+                                        CornerRadius="4" Padding="8,3" VerticalAlignment="Center"
+                                        Visibility="Collapsed">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" Foreground="#E8A33D" FontSize="11"
+                                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <TextBlock Text="PRIVADA" Foreground="#E8A33D" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </WrapPanel>
+
+                            <StackPanel x:Name="ViewerCountPanel" Orientation="Horizontal" Margin="0,8,0,0" Visibility="Collapsed"
+                                        Background="Transparent" ToolTipService.InitialShowDelay="200" ToolTipService.ShowDuration="30000">
+                                <TextBlock x:Name="TxtLiveScreen" Foreground="#9A9AA4" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Text=" · " Foreground="#9A9AA4" FontSize="12" VerticalAlignment="Center"/>
+                                <TextBlock Text="&#xE77B;" FontFamily="Segoe MDL2 Assets" Foreground="#0094F2" FontSize="13" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                <TextBlock x:Name="ViewerCountText" Text="0 assistindo" Foreground="White" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <Border x:Name="ScreenOverlapWarning" Background="#33FFBB00" BorderBrush="#FFBB00" BorderThickness="1"
+                                    CornerRadius="4" Padding="7,4" Margin="0,8,0,0" Visibility="Collapsed"
+                                    ToolTip="As lives que você assiste aparecem na sua transmissão. Mova a janela para outra tela ou escolha outra tela para transmitir.">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" Foreground="#FFBB00" FontSize="12" VerticalAlignment="Top" Margin="0,1,6,0"/>
+                                    <TextBlock Grid.Column="1" Text="Esta janela está na tela transmitida" Foreground="#FFD54F" FontSize="11" TextWrapping="Wrap"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- A live está no ar mas não chega em ninguém. Fica aqui, e não no StatusText
+                                 do preview, porque aquele texto é escondido a cada quadro local recebido —
+                                 e o quadro local continua chegando justamente nos casos em que nada sai. -->
+                            <Border x:Name="BroadcastHealthWarning" Background="#33E53935" BorderBrush="#E53935" BorderThickness="1"
+                                    CornerRadius="4" Padding="7,4" Margin="0,8,0,0" Visibility="Collapsed">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="&#xE7BA;" FontFamily="Segoe MDL2 Assets" Foreground="#E53935" FontSize="12" VerticalAlignment="Top" Margin="0,1,6,0"/>
+                                    <TextBlock Grid.Column="1" x:Name="BroadcastHealthWarningText" Text="" Foreground="#FF8A80" FontSize="11" TextWrapping="Wrap"/>
+                                </Grid>
+                            </Border>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="BtnChangeScreen" Style="{StaticResource ModernButton}" Width="34" Height="30" Padding="0"
+                                        Visibility="Collapsed" Margin="0,10,6,0" Click="BtnChangeScreen_Click"
+                                        Content="&#xE7F4;" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                                        AutomationProperties.Name="Trocar tela" ToolTip="Escolher outra tela sem parar a live"/>
+
+                                <ToggleButton Grid.Column="1" FocusVisualStyle="{StaticResource AppFocusVisual}" AutomationProperties.Name="Ver o que está sendo transmitido" x:Name="BtnTogglePreview" Width="34" Height="30" Margin="0,10,6,0" Cursor="Hand"
+                                              Background="#2D2D35" Foreground="#EEEEEE" BorderThickness="0" Visibility="Collapsed"
+                                              Content="&#xE7B3;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                              Checked="BtnTogglePreview_Changed" Unchecked="BtnTogglePreview_Changed"
+                                              ToolTip="Ver o que está sendo transmitido">
+                                    <ToggleButton.Template>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="6">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="border" Property="Background" Value="#3D3D45"/>
+                                                </Trigger>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter TargetName="border" Property="Background" Value="#0078D4"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </ToggleButton.Template>
+                                </ToggleButton>
+
+                                <Button Grid.Column="2" x:Name="BtnStopStream" Content="Parar" Style="{StaticResource DangerButton}"
+                                        Height="30" Padding="10,0" Visibility="Collapsed" Margin="0,10,0,0" Click="BtnStopStream_Click"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 

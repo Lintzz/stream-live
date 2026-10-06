@@ -83,6 +83,12 @@ namespace StreamLiveApp
         {
             InitializeComponent();
 
+            // 1200×760 cabe o modal de transmitir com folga (no 900×550 de antes ele vazava por
+            // baixo). Em notebook 1366×768 a altura não cabe: encolhe até a área útil.
+            var size = WindowHelper.FitToWorkArea(new System.Windows.Size(Width, Height), SystemParameters.WorkArea);
+            Width = size.Width;
+            Height = size.Height;
+
             DataContext = this;
 
             _mouseIdleTimer = new System.Windows.Threading.DispatcherTimer();
@@ -336,6 +342,10 @@ namespace StreamLiveApp
         {
             if (BroadcastHealthWarning == null) return;
 
+            // Com a lista recolhida o card não está à vista: o selo da barra de título fica
+            // vermelho cheio para o aviso não passar batido.
+            LiveTitlePill.Tag = string.IsNullOrEmpty(aviso) ? null : "alerta";
+
             if (string.IsNullOrEmpty(aviso))
             {
                 BroadcastHealthWarning.Visibility = Visibility.Collapsed;
@@ -440,6 +450,7 @@ namespace StreamLiveApp
             if (dialog.ShowDialog() != true || dialog.SelectedSource == null) return;
 
             _selectedSource = dialog.SelectedSource;
+            TxtLiveScreen.Text = _selectedSource.Title;
             _hostBroadcast?.ChangeSource(_selectedSource);
             UpdateChangeScreenTooltip();
             UpdateScreenOverlapWarning();
@@ -505,6 +516,7 @@ namespace StreamLiveApp
             var names = CurrentViewerNames();
             int count = names.Count;
             ViewerCountText.Text = count == 1 ? "1 assistindo" : $"{count} assistindo";
+            UpdateLivePill(count);
 
             if (count == 0)
             {
@@ -513,6 +525,30 @@ namespace StreamLiveApp
             }
 
             ViewerCountPanel.ToolTip = "Assistindo agora:\n• " + string.Join("\n• ", names);
+        }
+
+        /// <summary>"AO VIVO · 2" no selo da barra de título; sem ninguém, só "AO VIVO".</summary>
+        internal static string LivePillText(int viewers) =>
+            viewers > 0 ? $"AO VIVO · {viewers}" : "AO VIVO";
+
+        private void UpdateLivePill(int viewers)
+        {
+            LiveTitlePillText.Text = LivePillText(viewers);
+            string assistindo = viewers == 1 ? "1 pessoa assistindo" : $"{viewers} pessoas assistindo";
+            System.Windows.Automation.AutomationProperties.SetName(LiveTitlePill,
+                $"Ao vivo, {assistindo}. Mostrar amigos");
+        }
+
+        /// <summary>
+        /// O selo traz o card de volta: a lista de amigos recolhe sozinha quando uma live de
+        /// amigo está aberta, e é nela que ficam o Parar, o Trocar tela e os avisos.
+        /// </summary>
+        private void LiveTitlePill_Click(object sender, RoutedEventArgs e)
+        {
+            // Sem marcar como tratado, o clique sobe para a janela e vira DragMove.
+            e.Handled = true;
+            SetSidebarOpen(true);
+            BtnStopStream.Focus();
         }
 
         /// <summary>Quem está assistindo a sua live agora, pelo apelido salvo (ou IP).</summary>
@@ -594,6 +630,9 @@ namespace StreamLiveApp
             var invitedIps = dialog.InvitedIps;
 
             _isBroadcasting = true;
+            TxtLiveScreen.Text = selectedSource.Title;
+            UpdateLivePill(0);
+            LiveTitlePill.Visibility = Visibility.Visible;
             BtnStartStream.Visibility = Visibility.Collapsed;
             BtnStopStream.Visibility = Visibility.Visible;
             BtnChangeScreen.Visibility = Visibility.Visible;
@@ -671,6 +710,7 @@ namespace StreamLiveApp
             BtnTogglePreview.IsChecked = false;
             ViewerCountPanel.Visibility = Visibility.Collapsed;
             LiveBadge.Visibility = Visibility.Collapsed;
+            LiveTitlePill.Visibility = Visibility.Collapsed;
             PrivateBadge.Visibility = Visibility.Collapsed;
             ScreenOverlapWarning.Visibility = Visibility.Collapsed;
             ShowBroadcastHealthWarning(null);
@@ -705,6 +745,7 @@ namespace StreamLiveApp
             StatsOverlay.Visibility = Visibility.Visible;
             StatsText.Text = "📤 30fps | 2480.0 kbps | 🔊 50/s";
             ViewerCountText.Text = "2 assistindo";
+            UpdateLivePill(2);
             ViewerCountPanel.ToolTip = "Assistindo agora:\n• Bruno\n• Diego";
             BtnTogglePreview.IsChecked = true;
         }
@@ -939,9 +980,6 @@ namespace StreamLiveApp
             // empurrando o vídeo em vez de cobrir.
             SetSidebarOpen(count == 0);
 
-            // Sem nenhuma live o painel de cima e a unica coisa util na tela: a abinha some e o
-            // painel volta a aparecer. Sem isso, quem escondesse o painel e fechasse a ultima
-            // live ficava sem caminho de volta.
             bool hasSessions = count > 0;
 
             // Sem live os controles do player não têm o que controlar — e, só com opacidade
@@ -951,9 +989,6 @@ namespace StreamLiveApp
             // Sem live a lista de amigos fica sempre aberta e o puxador não tem o que fazer:
             // fora do Tab, senão o foco cai num botão invisível.
             SidebarHandle.IsTabStop = hasSessions;
-            TopPanelHandle.Visibility = hasSessions ? Visibility.Visible : Visibility.Collapsed;
-            if (hasSessions) SyncFloatingHandle(TopPanelHandle);
-            else SetTopPanelOpen(true);
         }
 
         private void SidebarHandle_Click(object sender, RoutedEventArgs e)
@@ -978,30 +1013,6 @@ namespace StreamLiveApp
             System.Windows.Automation.AutomationProperties.SetName(SidebarHandle, (string)SidebarHandle.ToolTip);
         }
 
-        /// <summary>
-        /// Painel de cima (tela, transmitir, contador) aberto. Guardado à parte de
-        /// <c>TopPanel.Visibility</c> porque teatro e tela cheia escondem o painel por conta
-        /// própria: sem esta lembrança, sair do modo imersivo devolveria o painel a quem já
-        /// tinha pedido para escondê-lo.
-        /// </summary>
-        private bool _topPanelOpen = true;
-
-        private void TopPanelHandle_Click(object sender, RoutedEventArgs e)
-        {
-            // Sem marcar como tratado, o clique sobe para a janela e vira DragMove.
-            e.Handled = true;
-            SetTopPanelOpen(!_topPanelOpen);
-        }
-
-        private void SetTopPanelOpen(bool open)
-        {
-            _topPanelOpen = open;
-            TopPanel.Visibility = open ? Visibility.Visible : Visibility.Collapsed;
-            TopPanelHandleArrow.Text = open ? "\uE70E" : "\uE70D";
-            TopPanelHandle.ToolTip = open ? "Esconder controles de transmissão" : "Mostrar controles de transmissão";
-            System.Windows.Automation.AutomationProperties.SetName(TopPanelHandle, (string)TopPanelHandle.ToolTip);
-        }
-
         /// <summary>Em teatro e tela cheia nada além do vídeo fica na tela.</summary>
         private void SetSidebarChromeVisible(bool visible)
         {
@@ -1009,7 +1020,6 @@ namespace StreamLiveApp
             if (visible) SyncFloatingHandle(SidebarHandle);
             if (!visible)
             {
-                TopPanelHandle.Visibility = Visibility.Collapsed;
                 SidebarPanel.Visibility = Visibility.Collapsed;
                 SidebarColumn.Width = new GridLength(0);
             }
@@ -1192,7 +1202,6 @@ namespace StreamLiveApp
             WindowState = WindowState.Maximized;
             Visibility = Visibility.Visible;
             TitleBarGrid.Visibility = Visibility.Collapsed;
-            TopPanel.Visibility = Visibility.Collapsed;
             OverlayGrid.Visibility = Visibility.Visible;
             ApplyImmersiveMargins(true);
             SetSidebarChromeVisible(false);
@@ -1204,7 +1213,6 @@ namespace StreamLiveApp
         {
             WindowStyle = WindowStyle.None;
             TitleBarGrid.Visibility = Visibility.Collapsed;
-            TopPanel.Visibility = Visibility.Collapsed;
             OverlayGrid.Visibility = Visibility.Visible;
             ApplyImmersiveMargins(true);
             SetSidebarChromeVisible(false);
@@ -1228,7 +1236,6 @@ namespace StreamLiveApp
             ResizeMode = ResizeMode.CanResize;
             WindowState = _previousWindowState;
             TitleBarGrid.Visibility = Visibility.Visible;
-            SetTopPanelOpen(_topPanelOpen);
             OverlayGrid.Visibility = Visibility.Collapsed;
             ApplyImmersiveMargins(false);
             SetSidebarChromeVisible(true);
@@ -1273,7 +1280,7 @@ namespace StreamLiveApp
             _mouseIdleTimer.Stop();
             _mouseIdleTimer.Start();
 
-            if (ViewerArea.IsMouseOver || VideoControlsButtons.IsMouseOver || SidebarHandle.IsMouseOver || TopPanelHandle.IsMouseOver)
+            if (ViewerArea.IsMouseOver || VideoControlsButtons.IsMouseOver || SidebarHandle.IsMouseOver)
             {
                 ShowVideoControls();
             }
@@ -1284,8 +1291,8 @@ namespace StreamLiveApp
             _mouseIdleTimer.Stop();
 
             // Enquanto o mouse estiver na barra ou num dos botões flutuantes, nada some.
-            if (VideoControlsButtons.IsMouseOver || SidebarHandle.IsMouseOver || TopPanelHandle.IsMouseOver
-                || VideoControlsBar.IsKeyboardFocusWithin || SidebarHandle.IsKeyboardFocused || TopPanelHandle.IsKeyboardFocused)
+            if (VideoControlsButtons.IsMouseOver || SidebarHandle.IsMouseOver
+                || VideoControlsBar.IsKeyboardFocusWithin || SidebarHandle.IsKeyboardFocused)
             {
                 _mouseIdleTimer.Start();
                 return;
@@ -1312,17 +1319,11 @@ namespace StreamLiveApp
             VideoControlsBar.IsHitTestVisible = interactive;
             VideoControlsBar.BeginAnimation(OpacityProperty, fade);
 
-            // Os botões de amigos e do painel de cima vivem sobre o vídeo e aparecem junto com o resto.
+            // O botão de amigos vive sobre o vídeo e aparece junto com o resto.
             if (SidebarHandle.Visibility == Visibility.Visible)
             {
                 SidebarHandle.IsHitTestVisible = interactive;
                 SidebarHandle.BeginAnimation(OpacityProperty, fade);
-            }
-
-            if (TopPanelHandle.Visibility == Visibility.Visible)
-            {
-                TopPanelHandle.IsHitTestVisible = interactive;
-                TopPanelHandle.BeginAnimation(OpacityProperty, fade);
             }
         }
 
