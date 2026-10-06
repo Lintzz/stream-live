@@ -30,7 +30,10 @@ namespace StreamLiveApp
 
         // Keyframe por tempo decorrido, não por contagem de frames: a taxa real de captura
         // varia bastante, então "a cada 120 frames" dava um intervalo imprevisível.
-        private static readonly TimeSpan KeyFrameInterval = TimeSpan.FromSeconds(2);
+        // Já foi 2 s. Hoje é só rede de segurança: perda de pacote pede keyframe na hora
+        // (REQUEST_KEYFRAME) e quem entra ganha a rajada. Cada keyframe de 1080p é uma rajada
+        // de ~150 KB de UDP, e rajada é o que se perde na VPN e vira quadradinho em quem assiste.
+        private static readonly TimeSpan KeyFrameInterval = TimeSpan.FromSeconds(5);
         private readonly Stopwatch _keyFrameClock = Stopwatch.StartNew();
         private TimeSpan _lastKeyFrame = TimeSpan.Zero;
 
@@ -56,7 +59,7 @@ namespace StreamLiveApp
         // Viewer: perda de pacote de vídeo. O SIPSorcery remonta o quadro sem conferir se
         // faltou algum pacote, e o FFmpeg "decodifica" o quadro furado com ocultação de erro —
         // sai imagem, então nada aqui percebia. O estrago se propaga a todo quadro P seguinte
-        // (os borrões e blocos arrastados na tela) até o próximo keyframe periódico, 2 s
+        // (os borrões e blocos arrastados na tela) até o próximo keyframe periódico, segundos
         // depois. Com o buraco detectado na sequência RTP, o viewer pede o keyframe na hora e
         // segura o último quadro bom em vez de exibir o lixo.
         private static readonly TimeSpan MaxLossHold = TimeSpan.FromSeconds(1);
@@ -279,8 +282,7 @@ namespace StreamLiveApp
                                 try
                                 {
                                     var now = _keyFrameClock.Elapsed;
-                                    var interval = now <= _burstUntil ? KeyFrameBurstInterval : KeyFrameInterval;
-                                    if (now - _lastKeyFrame >= interval)
+                                    if (ShouldForcePeriodicKeyFrame(now, _lastKeyFrame, _burstUntil))
                                     {
                                         _lastKeyFrame = now;
                                         ForceIdr(_videoEncoder);
@@ -571,6 +573,16 @@ namespace StreamLiveApp
         internal static void PrepareEncoder(FFmpegVideoEncoder encoder, int width, int height)
             => encoder.InitialiseEncoder(FFmpeg.AutoGen.AVCodecID.AV_CODEC_ID_H264, width, height, TargetFps);
 
+        /// <summary>
+        /// Keyframe por tempo: a cada <see cref="KeyFrameInterval"/>, ou bem mais seguido na
+        /// janela logo depois de alguém entrar.
+        /// </summary>
+        internal static bool ShouldForcePeriodicKeyFrame(TimeSpan now, TimeSpan lastKeyFrame, TimeSpan burstUntil)
+        {
+            var interval = now <= burstUntil ? KeyFrameBurstInterval : KeyFrameInterval;
+            return now - lastKeyFrame >= interval;
+        }
+
         public void ForceKeyFrame() => StartKeyFrameBurst();
 
         /// <summary>
@@ -768,7 +780,7 @@ namespace StreamLiveApp
         /// <c>_videoDecodedEver</c> só ia de false para true: depois do primeiro quadro
         /// decodificado na vida da sessão, o timer acima ficava inerte para sempre. Se uma
         /// rajada de perda destruísse a referência, o viewer não pedia nada e ficava com
-        /// macrobloco na tela até o keyframe periódico do host — até 2 segundos, toda vez.
+        /// macrobloco na tela até o keyframe periódico do host — segundos, toda vez.
         /// </summary>
         public void RequestKeyFrame()
         {

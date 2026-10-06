@@ -249,7 +249,7 @@ namespace StreamLiveApp
                 if (next == ConnectionHealth.Instavel)
                 {
                     // Se o que quebrou foi só a referência do decoder, um keyframe resolve em
-                    // ~300ms — bem melhor do que esperar o ciclo de 2s do host.
+                    // ~300ms — bem melhor do que esperar o keyframe periódico do host.
                     try { _streamManager?.RequestKeyFrame(); } catch { }
                 }
 

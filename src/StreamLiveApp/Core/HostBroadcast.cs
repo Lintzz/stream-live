@@ -178,7 +178,7 @@ namespace StreamLiveApp
 
         /// <summary>
         /// Troca o monitor transmitido sem derrubar a live. O keyframe imediato evita que os
-        /// viewers fiquem até 2s com a imagem da tela anterior.
+        /// viewers fiquem até o próximo keyframe periódico com a imagem da tela anterior.
         /// </summary>
         public void ChangeSource(CaptureSource source)
         {

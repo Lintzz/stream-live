@@ -50,7 +50,7 @@ public class EncoderBitrateTests
 
         foreach (var frame in MovingDetail(frames))
         {
-            // Keyframe forçado no meio, como o app faz a cada 2 s e quando alguém entra: é
+            // Keyframe forçado no meio, como o app faz periodicamente e quando alguém entra: é
             // aí que o encoder é recriado e voltaria a nascer com a taxa errada.
             if (i == frames / 2) StreamManager.ForceIdr(encoder);
 

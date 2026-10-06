@@ -8,7 +8,7 @@ namespace StreamLiveApp.Tests;
 /// <summary>
 /// O viewer detecta pacote de vídeo perdido pela sequência RTP, pede keyframe e segura o
 /// último quadro bom até a fatia IDR chegar. Sem isso, o quadro furado era decodificado com
-/// ocultação de erro e o borrão se arrastava por até 2 s, até o keyframe periódico.
+/// ocultação de erro e o borrão se arrastava até o keyframe periódico.
 /// </summary>
 public class VideoLossRecoveryTests
 {
