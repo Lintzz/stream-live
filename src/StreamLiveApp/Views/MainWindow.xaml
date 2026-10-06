@@ -407,17 +407,47 @@
             </Grid>
 
             <!-- Sidebar de amigos -->
-            <Border x:Name="SidebarPanel" Grid.Column="0" Background="#18181E" CornerRadius="8" Margin="0,0,4,0"
-                    BorderBrush="#2D2D35" BorderThickness="1">
+            <!-- Dois cards empilhados: amigos (cresce) e transmitir (embaixo, separado). O de
+                 transmitir chegou a ficar dentro do de amigos e parecia parte da lista. -->
+            <Grid x:Name="SidebarPanel" Grid.Column="0" Margin="0,0,4,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="#18181E" CornerRadius="8" BorderBrush="#2D2D35" BorderThickness="1">
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Text="AMIGOS" Foreground="#9A9AA4" FontSize="11" FontWeight="Bold" Margin="4,0,0,8"/>
+                    <!-- "Gerenciar amigos" virou a engrenagem do cabeçalho: era um botão largo no
+                         rodapé, e o rodapé agora é do card de transmitir. Com a lista vazia, o
+                         caminho fica em destaque no meio (SidebarEmptyState). -->
+                    <Grid Grid.Row="0" Margin="4,0,0,8">
+                        <TextBlock Text="AMIGOS" Foreground="#9A9AA4" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <Button x:Name="BtnManageFriends" HorizontalAlignment="Right" Width="28" Height="26" Margin="0,-4,0,-4"
+                                Content="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="#9A9AA4"
+                                Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                FocusVisualStyle="{StaticResource AppFocusVisual}"
+                                AutomationProperties.Name="Gerenciar amigos" ToolTip="Gerenciar amigos"
+                                Click="BtnManageFriends_Click">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="5">
+                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bg" Property="Background" Value="#2D2D35"/>
+                                            <Setter Property="Foreground" Value="White"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </Grid>
 
                     <Grid Grid.Row="1">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -499,8 +529,8 @@
                         <StackPanel x:Name="SidebarEmptyState" VerticalAlignment="Center" Visibility="Collapsed">
                             <TextBlock Text="Nenhum amigo adicionado ainda" Foreground="#9A9AA4" FontSize="12"
                                        TextWrapping="Wrap" TextAlignment="Center" Margin="4,0,4,10"/>
-                            <Button Content="Adicionar amigo" Style="{StaticResource ModernButton}"
-                                    Padding="8,6" FontSize="12" Click="BtnManageFriends_Click"/>
+                            <Button Content="Adicionar amigos" Style="{StaticResource PrimaryButton}"
+                                    Padding="14,10" FontSize="13" Margin="8,0" Click="BtnManageFriends_Click"/>
                         </StackPanel>
 
                         <TextBlock x:Name="SidebarNoneOnline" Text="Nenhum amigo online no momento"
@@ -508,17 +538,16 @@
                                    VerticalAlignment="Bottom" Margin="4,8,4,0" Visibility="Collapsed"/>
                     </Grid>
 
-                    <Button Grid.Row="2" x:Name="BtnManageFriends" Content="Gerenciar amigos"
-                            FontSize="12" Padding="8,6" Margin="0,8,0,0"
-                            Style="{StaticResource ModernButton}" Click="BtnManageFriends_Click"/>
+                </Grid>
+            </Border>
 
                     <!-- Card de transmitir, como o painel do canto do Discord. Era uma faixa no topo
                          da janela que ocupava ~70 px o tempo todo só com o botão Transmitir, e quem
                          abria só para assistir precisava escondê-la. Cada peça liga e desliga a
                          própria visibilidade; as margens ficam nas peças, não nos contêineres, para
                          o card não sobrar espaço vazio quando está parado. -->
-                    <Border Grid.Row="3" x:Name="BroadcastCard" Background="#1E1E24" CornerRadius="6"
-                            Padding="10" Margin="0,8,0,0">
+                    <Border Grid.Row="1" x:Name="BroadcastCard" Background="#18181E" CornerRadius="8"
+                            BorderBrush="#2D2D35" BorderThickness="1" Padding="10" Margin="0,8,0,0">
                         <StackPanel>
                             <Button x:Name="BtnStartStream" Style="{StaticResource PrimaryButton}"
                                     HorizontalAlignment="Stretch" Padding="10,7" Click="BtnStartStream_Click"
@@ -624,8 +653,7 @@
                             </Grid>
                         </StackPanel>
                     </Border>
-                </Grid>
-            </Border>
+            </Grid>
 
             <!-- Aba visível que revela a sidebar de amigos quando ela está escondida -->
         </Grid>
