@@ -2,7 +2,7 @@
 Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · Atualizado em: 2026-10-06
 
 ## Próximo
-- [ ] Teste com um amigo na 2.1.0 publicada (Radmin na bandeja, on-line sozinho, fechar junto)
+- [ ] Registrar no log o caminho de rede da live (ICE) e investigar as travadinhas do início — `/nova-feature`
 
 ## Depois
 - [ ] `/14-revisao-geral` de novo, depois da release, para fechar em 🟢
