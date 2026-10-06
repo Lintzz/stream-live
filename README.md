@@ -5,7 +5,7 @@
 ![Framework](https://img.shields.io/badge/.NET-8.0-purple)
 
 <p align="center">
-  <img src="docs/images/demo.gif" alt="Assistindo a live da Ana, abrindo a do Diego lado a lado, modo teatro e iniciando uma live privada para dois amigos" />
+  <img src="docs/images/demo.gif" alt="Assistindo a live da Ana, abrindo a do Diego lado a lado, modo teatro e iniciando uma live privada para dois amigos, escolhendo a tela pela miniatura" />
 </p>
 
 <p align="center"><sub>Amigos e lives fictícios, gravados com o modo demonstração (<code>--demo</code>). As cenas são desenhadas pelo próprio app no lugar das telas de verdade. Todas as telas estão em <a href="#-telas">Telas</a>.</sub></p>
