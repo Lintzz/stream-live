@@ -14,6 +14,14 @@ Data: 2026-10-06
   (`WindowHelper.ClampToArea`) quando a janela foi diminuída à mão
 - Sai o puxador "Esconder controles de transmissão" e o estado `_topPanelOpen`
 
+## Ajuste depois de ver na tela (2026-10-06)
+- O card de transmitir ficava dentro do card de amigos e parecia colado nele: agora são dois
+  cards separados, com 8 px entre eles, e o de transmitir no mesmo estilo do de amigos
+- "Gerenciar amigos" virou uma engrenagem no canto superior direito do card de amigos (nome e
+  dica para leitor de tela e mouse); com a lista vazia, o "Adicionar amigos" no meio ficou
+  grande e azul (botão primário). Estado vazio não conferido na tela: o `--demo` sempre tem
+  amigos, e abrir o app de verdade subiria o Radmin, que estava fechado
+
 ## Decisões (2026-10-06, com o dono)
 - Tamanho: sempre 1200×760 ao abrir, sem lembrar o último
 - Card no rodapé da lista; "Gerenciar amigos" logo acima

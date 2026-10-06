@@ -68,8 +68,8 @@ encoder, no viewer só decodifica. `EnsureCapturers()` só roda no host; `_isHos
 - **Viewer:** `MainWindow` → uma `ViewerSession` por live aberta (várias em grade) →
   `SignalingClient` (Websocket.Client) + `StreamManager`. `ViewerSession` é `INotifyPropertyChanged`
   e a UI faz binding nela; o code-behind do `MainWindow` cuida só de foco, grade, PiP e teatro.
-- **Onde fica o Transmitir:** no card do rodapé da lista de amigos (`BroadcastCard`), não numa
-  faixa no topo. A lista recolhe sozinha com uma live aberta, e o card vai junto; por isso,
+- **Onde fica o Transmitir:** num card próprio embaixo do card de amigos (`BroadcastCard`), não
+  numa faixa no topo; "Gerenciar amigos" é a engrenagem do cabeçalho de amigos. A lista recolhe sozinha com uma live aberta, e o card vai junto; por isso,
   durante a live, o selo `LiveTitlePill` na barra de título mostra o estado e reabre a lista.
   A janela abre em 1200×760 (`FitToWorkArea`) para o modal de transmitir caber dentro dela.
 

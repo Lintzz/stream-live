@@ -60,7 +60,7 @@ O projeto nasceu da seguinte necessidade:
 | ![Duas lives lado a lado em grade](docs/images/grade.png) | ![Modal de transmitir com as miniaturas das duas telas, dois amigos marcados e a senha](docs/images/iniciar-transmissao.png) |
 | **Várias lives em grade.** Cada uma com seu volume; um clique foca só nela sem desconectar as outras. | **Transmitir.** Escolha a tela pela miniatura, marque quem pode ver (ninguém marcado = pública) e, se quiser, uma senha. |
 | ![Transmitindo ao vivo, em modo privado, com o preview da própria tela](docs/images/transmitindo.png) | |
-| **Transmitindo.** O card no canto da lista mostra *ao vivo*, *privada*, a tela e quem está assistindo, com trocar tela, preview e parar. Com a lista recolhida, o selo *AO VIVO* da barra de título traz o card de volta. As lives abertas ficam mudas para o som delas não voltar pela captura. | |
+| **Transmitindo.** O card de transmitir, embaixo da lista, mostra *ao vivo*, *privada*, a tela e quem está assistindo, com trocar tela, preview e parar. Com a lista recolhida, o selo *AO VIVO* da barra de título traz o card de volta. As lives abertas ficam mudas para o som delas não voltar pela captura. | |
 
 ---
 
