@@ -60,7 +60,8 @@ Radmin VPN. A mesma janela é host e viewer ao mesmo tempo.
 `StreamManager` (Core) é a peça central e serve os dois papéis — no host cria capturadores e
 encoder, no viewer só decodifica. `EnsureCapturers()` só roda no host; `_isHost` separa o resto.
 
-- **Host:** `MainWindow` → `HostBroadcast` (ciclo de vida da live, zero UI) → `StreamManager`
+- **Host:** `MainWindow` → `BroadcastDialog` (tela pela miniatura, quem pode ver, senha; o
+  mesmo modal só com as telas é o "Trocar tela") → `HostBroadcast` (ciclo de vida da live, zero UI) → `StreamManager`
   → `VideoCapturer`/`AudioCapturer`. O `SignalingServer` (Fleck, porta 8080) sobe **junto com o
   app**, não com a live: é ele que responde ao `STATUS_CHECK` dos amigos e faz você aparecer
   como online na lista deles.
@@ -96,7 +97,9 @@ Detalhes que quebram fácil:
   `::1`; sem normalizar, nada casa com a lista de amigos. `127.0.0.1` sempre passa.
 - O `OnOpen` tem **dois** portões independentes, decididos por `ShouldAcceptConnection` (lógica
   pura, testada): a lista de amigos e, durante uma **live privada**, a lista de convidados
-  daquela live (`SetLiveVisibility`, zerada pelo `AnnounceStop`). Recusar no `OnOpen` é o que
+  daquela live (`SetLiveVisibility`, zerada pelo `AnnounceStop`). Privada = lista de
+  convidados não vazia: `BroadcastSettings.PrivateLive` é derivado dela, e o `BroadcastDialog`
+  não tem caixa "Live privada" (ninguém marcado = pública; toda live começa sem ninguém). Recusar no `OnOpen` é o que
   esconde a live: o `FriendStatusService` do outro lado falha ao conectar e reporta *offline*,
   e a mesma recusa nega a entrada, sem precisar filtrar `RegisterViewer` nem o broadcast. A
   recusa por live privada **não** dispara `OnConnectionRejected`: o evento vira um aviso no

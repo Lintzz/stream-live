@@ -35,12 +35,13 @@ O projeto nasceu da seguinte necessidade:
 *Um app instalável para hostear transmissões ou participar (Join) de lives com amigos via Radmin VPN.*
 
 * **Para quem transmite (Host):**
-  * Escolher qual monitor transmitir (suporte a múltiplas telas).
+  * Escolher a tela pela miniatura do que está nela, como no Discord, e trocar de tela sem
+    parar a live.
   * O áudio do Discord fica sempre fora da captura, para evitar retorno nas chamadas de voz.
     Com o Discord fechado, o áudio do sistema inteiro é transmitido normalmente.
   * Senha de sala opcional, pedida ao iniciar a transmissão.
-  * **Live privada:** marque quais amigos podem ver a transmissão. Para todos os outros você
-    aparece como offline, e nem a existência da live é anunciada — diferente da senha, que
+  * **Live privada:** marque quais amigos podem ver a transmissão; sem ninguém marcado, ela é
+    pública. Para todos os outros você aparece como offline, e nem a existência da live é anunciada — diferente da senha, que
     barra a entrada mas deixa todo mundo ver que você está transmitindo.
   * O Host não ouve a própria transmissão.
 * **Para quem assiste (Join):**
@@ -56,8 +57,8 @@ O projeto nasceu da seguinte necessidade:
 |---|---|
 | ![Lista de amigos com dois em live, um online e dois offline](docs/images/amigos.png) | ![Live da Ana aberta, com a barra de controles do player](docs/images/live.png) |
 | **Lista de amigos.** Verde: em live (clique para assistir). Amarelo: online sem transmitir. Cinza: offline. | **Uma live aberta.** A lista recolhe para o vídeo ocupar a janela; volume, estatísticas, PiP, teatro e tela cheia ficam na barra de baixo. |
-| ![Duas lives lado a lado em grade](docs/images/grade.png) | ![Diálogo de iniciar transmissão com senha e live privada](docs/images/iniciar-transmissao.png) |
-| **Várias lives em grade.** Cada uma com seu volume; um clique foca só nela sem desconectar as outras. | **Iniciar transmissão.** Senha opcional e live privada, escolhendo quais amigos podem ver. |
+| ![Duas lives lado a lado em grade](docs/images/grade.png) | ![Modal de transmitir com as miniaturas das duas telas, dois amigos marcados e a senha](docs/images/iniciar-transmissao.png) |
+| **Várias lives em grade.** Cada uma com seu volume; um clique foca só nela sem desconectar as outras. | **Transmitir.** Escolha a tela pela miniatura, marque quem pode ver (ninguém marcado = pública) e, se quiser, uma senha. |
 | ![Transmitindo ao vivo, em modo privado, com o preview da própria tela](docs/images/transmitindo.png) | |
 | **Transmitindo.** Selos de *ao vivo* e *privada*, quem está assistindo e o preview da sua transmissão. As lives abertas ficam mudas para o som delas não voltar pela captura. | |
 
