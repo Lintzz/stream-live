@@ -133,7 +133,14 @@ essa decisão contra upgrades do SIPSorcery.
 que quebram isso em silêncio: o `EncodeVideo` inicializa o encoder dizendo 30 fps (e o `ForceIdr`
 o recria a cada keyframe), então `PrepareEncoder` declara `TargetFps` (60) antes de **cada** quadro;
 e as opções vão para o `priv_data` do x264, onde `maxrate`/`bufsize` não existem. O
-`EncoderBitrateTests` trava as duas coisas. Sem nenhum peer conectado o host **não codifica**
+`EncoderBitrateTests` trava as duas coisas.
+
+Por cima do `ultrafast` o `x264-params` religa deblock, AQ, 8×8 e a busca de movimento
+(`me=hex`, `subme=2`): sem ela, movimento rápido não comprimia, batia no teto e virava bloco.
+Custa ~1,5× a CPU do ultrafast puro (medido; o dono aceitou esse teto, com o jogo na frente).
+`keyint=600` tira o keyframe automático do x264 (um por segundo); keyframe só sai pelo
+`ForceIdr`. Opção com nome errado no `x264-params` é ignorada em silêncio — o
+`EncoderQualityTests` lê as opções efetivas que o x264 grava no primeiro quadro. Sem nenhum peer conectado o host **não codifica**
 (`ShouldEncode`); o fps mostrado e o aviso de saúde (`DecideHealthWarning`) olham a captura.
 Medições e alternativas descartadas (AMF, decode por GPU) em `auditorias/11-performance.md`.
 
@@ -148,7 +155,7 @@ do sistema inteiro, sem aviso. `SetTargetProcess` reabre a captura fora da threa
 parâmetros só chegam ao Windows na abertura.
 
 Isto já foi um ComboBox nas configurações. Junto com ele saíram o "Modo leve" (agora fixo:
-preset `ultrafast`, escala por vizinho mais próximo e prioridade `BelowNormal`) e o toggle
+escala por vizinho mais próximo e prioridade `BelowNormal`) e o toggle
 manual de captura GDI — o **fallback automático** DXGI→GDI descrito acima continua valendo.
 Nenhuma das três era usada como escolha; só um dos valores rodava.
 

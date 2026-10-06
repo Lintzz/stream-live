@@ -509,9 +509,10 @@ namespace StreamLiveApp
                 if (_videoEncoder == null)
                 {
                     // A versão atual do SIPSorcery para .NET 8 não expõe API para selecionar NVENC/AMF nativamente.
-                    // Portanto, usamos o libx264 com perfil 'ultrafast' e 'zerolatency' para garantir baixíssimo uso de CPU,
-                    // simulando a performance de uma GPU. Já houve um 'veryfast' opcional aqui: a diferença de
-                    // imagem não se via em campo e o custo de CPU sim, então o ultrafast virou fixo.
+                    // Portanto, usamos o libx264 a partir do 'ultrafast' + 'zerolatency', com as ferramentas de
+                    // qualidade religadas uma a uma pela medição (ver CreateH264Encoder). Já houve um 'veryfast'
+                    // opcional aqui, que ninguém ligava; a medição de 2026-10 mostrou que a diferença existe no
+                    // movimento rápido, e ela agora é fixa.
                     _videoEncoder = CreateH264Encoder();
                 }
             }
@@ -530,6 +531,21 @@ namespace StreamLiveApp
         /// comum fica abaixo dele com a mesma qualidade de antes.
         /// O VBV vai por x264-params: o SIPSorcery aplica as opções no priv_data do x264, onde
         /// "maxrate"/"bufsize" (que são do contexto genérico) não existem e eram ignorados.
+        ///
+        /// O ultrafast puro deixava a imagem em blocos no movimento: ele desliga deblock e AQ, e
+        /// a busca de movimento (dia, subme 0) não acha o deslocamento — movimento rápido não
+        /// comprimia, batia no teto e o VBV estourava o quantizador. Medido em 1080p na máquina
+        /// do dono (panorâmica de 24 px/quadro, CPU a 60 fps):
+        ///   ultrafast puro                    ~116% de 1 núcleo, 8,4–9 Mbps (no teto), pior 5% ~25 dB
+        ///   + deblock/AQ/8x8                  ~126%,              7,9–8,4 Mbps,         pior 5% ~27,5 dB
+        ///   + me=hex subme=2 (o escolhido)    ~179%,              4,5 Mbps,             pior 5% ~30 dB
+        /// As buscas intermediárias (hex/subme 1, dia/subme 2) custavam quase o mesmo e não saíam
+        /// do teto. O teto de CPU aceito pelo dono foi ~1,5× o de antes; o jogo segue com
+        /// prioridade (processo BelowNormal). O veryfast dá a mesma imagem pelo mesmo custo, mas
+        /// liga scenecut: troca de cena em jogo viraria keyframe extra, e keyframe é rajada.
+        /// keyint=600: o x264 mandava um keyframe por segundo sozinho (o padrão é igual ao fps);
+        /// agora keyframe só sai quando o app pede (ForceIdr), e cada um é uma rajada de ~150 KB.
+        /// <c>EncoderQualityTests</c> lê as opções efetivas no quadro e trava tudo isso.
         /// </summary>
         internal static FFmpegVideoEncoder CreateH264Encoder()
         {
@@ -538,7 +554,9 @@ namespace StreamLiveApp
                 { "preset", "ultrafast" },
                 { "tune", "zerolatency" },
                 { "crf", "23" },
-                { "x264-params", $"vbv-maxrate={MaxVideoKbps}:vbv-bufsize={MaxVideoKbps / 2}" }
+                { "x264-params", $"vbv-maxrate={MaxVideoKbps}:vbv-bufsize={MaxVideoKbps / 2}" +
+                    ":deblock=0,0:aq-mode=1:8x8dct=1:partitions=i8x8,i4x4:me=hex:subme=2" +
+                    ":keyint=600:min-keyint=600" }
             };
             return new FFmpegVideoEncoder(x264Options);
         }
