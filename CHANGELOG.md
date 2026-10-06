@@ -5,6 +5,13 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 
 ## [Não lançado]
 
+## [2.2.0] - 2026-10-06
+
+### Melhorado
+- Imagem bem mais nítida quando algo se move rápido na tela: menos borrão e menos blocos, gastando cerca de metade da internet que antes nesses momentos.
+- Menos "quadradinhos" em quem assiste: o app manda a imagem completa com muito menos frequência, e essas rajadas eram o que mais se perdia na VPN.
+- Quem transmite usa um pouco mais de processador (cerca de meio núcleo a mais). O jogo continua com prioridade sobre a live.
+
 ## [2.1.0] - 2026-10-05
 
 ### Adicionado

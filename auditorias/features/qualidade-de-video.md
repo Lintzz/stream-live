@@ -1,5 +1,5 @@
 # Qualidade de vídeo: pixelado no movimento, quadradinhos e fps
-Data: 2026-10-06 (plano em 2026-10-05) · Commits: `103f281` (encoder), `0a52748` (keyframe periódico) · Próxima versão: 2.1.1 (correção: só `perf`)
+Data: 2026-10-06 (plano em 2026-10-05) · Commits: `103f281` (encoder), `0a52748` (keyframe periódico) · Versão: 2.2.0 (menor: ganho perceptível, pelo CONVENCOES.md), publicada em 2026-10-06 sem a live de teste
 
 ## Pedido
 Imagem pixelada quando algo se move rápido, "quadradinhos" às vezes, e fps que parece baixo.
