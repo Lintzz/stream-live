@@ -59,10 +59,12 @@ Atualizado em: 2026-10-06
 - Desde a 2.0 (ainda não lançada): protocolo de sala v2 (salt por sala, chaves separadas), bloqueio após 5 senhas erradas, descarte do que não decifra; desfazer remoção de amigo; confirmação ao fechar com amigos assistindo; validação de IP; uso completo pelo teclado e leitor de tela; vídeo com teto de 8 Mbps e encode só com público
 - Desde a 2.1.0 (2026-10-05): ícone novo; Radmin aberto sozinho na bandeja (/minimized) quando está fechado na abertura do app, e ligado (on-line) sozinho quando sobe off-line; ao fechar, confirmação com "Fechar o Radmin VPN também" (lembrada)
 - Desde a 2.2.0 (2026-10-06): encoder com deblock, AQ e busca de movimento (movimento rápido com metade do bitrate e sem blocos), keyframe periódico a cada 5 s e nenhum automático do x264
-- 254 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
+- Ainda não lançado (2.3.0): modal de transmitir com miniatura das telas, "Quem pode ver" (ninguém marcado = pública) e "Trocar tela" durante a live; caixas de marcar no tema escuro — ver auditorias/features/modal-de-transmitir.md
+- 269 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
 
 ## Planejado, ainda não feito
 - Teste com amigo na 2.1.0 publicada: Radmin abrindo na bandeja, ficando on-line e fechando junto (ver auditorias/features/radmin-e-icone.md)
+- Regravar o GIF do README com o modal novo (precisa do mouse; só com o PC liberado)
 - Teste com amigo da qualidade de vídeo (2.2.0, já publicada sem esse teste): fps, CPU e perda no diagnostico.log — ver auditorias/features/qualidade-de-video.md
 
 ## Radmin VPN (levantado em 2026-10-05, Radmin 2.1.1 / 2.1.4951.1 nesta máquina)
@@ -87,4 +89,5 @@ Atualizado em: 2026-10-06
 - 2026-10-05: protocolo de sala v2 (salt por sala, chaves Auth/Enc) — quebra compatibilidade com a 1.0.38 em sala com senha; próxima release é 2.0.0
 - 2026-10-05: instalador sem assinatura Authenticode por decisão (sem custo); mitigação: 2FA no GitHub
 - 2026-10-05: vídeo com teto de 8 Mbps (CRF 23 + VBV) e 60 fps declarados; sem encode sem público. AMF e decode por GPU medidos e descartados por ora
+- 2026-10-06, nova-feature modal de transmitir: sem caixa "Live privada" — ninguém marcado = pública, alguém marcado = só para os marcados; toda live começa sem ninguém marcado; tela escolhida por miniaturas (atualizam ~1 s) num modal só com amigos e senha; durante a live, botão "Trocar tela" com o mesmo seletor; caixa "Tela:" sai da barra
 - 2026-10-05, nova-feature qualidade de vídeo: o jogo continua na frente (processo e threads seguem BelowNormal); o preset do x264 é escolhido por medição, com teto de ~1,5× o custo de CPU atual; seletor 1080p/720p fica para depois
