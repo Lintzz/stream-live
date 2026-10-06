@@ -64,7 +64,8 @@ Atualizado em: 2026-10-06
 - 280 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
 
 ## Planejado, ainda não feito
-- Travadinhas no início das lives: dono instala builds/windows/StreamLive-Setup-2.3.0-diag-b0d92a8.exe (log detalhado, F8 marca) e manda o diagnostico-detalhado.log da próxima live com travadinha; depois, conforme o resultado, prender o vídeo na Radmin, espaçar a rajada do keyframe ou baixar o teto
+- Intra-refresh + teto 5 Mbps (ainda não lançado, 2.4.0): live de teste com a amiga transmitindo na versão nova — ver auditorias/features/intra-refresh.md
+- Teto de vídeo adaptativo (baixar sozinho quando quem assiste perde pacote) — possível depois, decisão do dono 2026-10-06
 
 ## Radmin VPN (levantado em 2026-10-05, Radmin 2.1.1 / 2.1.4951.1 nesta máquina)
 - Serviço é `RvControlSvc` (Auto), não `RvpnService`; a GUI é `RvRvpnGui.exe`, manifest `asInvoker` (UI Automation funciona sem admin)
@@ -76,6 +77,7 @@ Atualizado em: 2026-10-06
 - O IP 26.x é da conta, não da rede: adaptador "Radmin VPN" com 26.x prova que o Radmin está ligado, não que você está numa rede específica
 
 ## Decisões
+- 2026-10-06: intra-refresh (keyint 30) no lugar do IDR sob demanda + teto 5 Mbps; viewer detecta o SEI recovery point e só então não retém a imagem (compatível com a 2.3.0 sem mudar o protocolo). Teto adaptativo fica para depois
 - 2026-10-06 18:00–18:37, live real com a build de diagnóstico (82 F8): vídeo pela Radmin (fdfd::), ping 15 ms, perda total 0,93%. 177 de 178 congelamentos = perda → imagem retida esperando keyframe, ~1,1 s cada (= teto MaxLossHold de 1 s: o keyframe pedido não chegou a tempo e a imagem volta com defeito). A perda cresce com a taxa: <1 Mbps 0% dos segundos, 3–5 Mbps ~16%, 5–6 28%, 6–7 58%, 7+ 68–100% — o caminho entre as máquinas satura em ~5–6 Mbps, abaixo do teto de 8 Mbps. Próximo: baixar o teto e/ou trocar o keyframe sob demanda por intra-refresh (ver resposta da sessão)
 - 2026-10-06: log detalhado só na build de diagnóstico (-p:DiagDetalhado=true), a pedido do dono — instalador público não grava. No teste local (live para 127.0.0.1) o ICE escolheu IPv6 público, não a Radmin: o vídeo da live com a amiga provavelmente também saiu pela internet, e o ping exibido (sinalização, pela Radmin) não mede esse caminho
 - 2026-10-06: live real com amiga feita pelo dono (2.2.0/2.3.0) — tudo funcionando. Travadinhas nos primeiros ~15 min: o log do viewer mostrou 30–500 pacotes de vídeo perdidos a cada 10 s (13:30–13:37), quase zero depois. Perda contada por sequência RTP = rede entre as máquinas, não CPU da host; cada perda congela o quadro até o keyframe pedido. O caminho escolhido pelo ICE (Radmin 26.x, IPv6 público ou Teredo 2001:0::) não é registrado — primeira coisa a resolver

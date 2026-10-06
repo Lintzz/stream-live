@@ -144,7 +144,8 @@ essa decisão contra upgrades do SIPSorcery.
 ### Encoder de vídeo: taxa declarada e teto
 
 `StreamManager.CreateH264Encoder` usa libx264 `ultrafast`+`zerolatency` com CRF 23 e teto pelo VBV
-(`x264-params` `vbv-maxrate`=`MaxVideoKbps` 8000, `vbv-bufsize` metade). Dois detalhes do SIPSorcery
+(`x264-params` `vbv-maxrate`=`MaxVideoKbps` 5000, `vbv-bufsize` 1/5 — limita o tamanho de cada
+quadro, que é o que vira rajada de UDP). Dois detalhes do SIPSorcery
 que quebram isso em silêncio: o `EncodeVideo` inicializa o encoder dizendo 30 fps (e o `ForceIdr`
 o recria a cada keyframe), então `PrepareEncoder` declara `TargetFps` (60) antes de **cada** quadro;
 e as opções vão para o `priv_data` do x264, onde `maxrate`/`bufsize` não existem. O
@@ -153,8 +154,17 @@ e as opções vão para o `priv_data` do x264, onde `maxrate`/`bufsize` não exi
 Por cima do `ultrafast` o `x264-params` religa deblock, AQ, 8×8 e a busca de movimento
 (`me=hex`, `subme=2`): sem ela, movimento rápido não comprimia, batia no teto e virava bloco.
 Custa ~1,5× a CPU do ultrafast puro (medido; o dono aceitou esse teto, com o jogo na frente).
-`keyint=600` tira o keyframe automático do x264 (um por segundo); keyframe só sai pelo
-`ForceIdr`. Opção com nome errado no `x264-params` é ignorada em silêncio — o
+**Intra-refresh** (`keyint=30:intra-refresh=1`, `IntraRefreshPeriodFrames`): no lugar de IDR, uma
+faixa intra varre a imagem a cada 30 quadros, e uma perda de pacote some sozinha no fim da
+varredura seguinte (pior caso 2 períodos, medido no `IntraRefreshTests`). Veio de uma live real
+com o log detalhado (2026-10-06): a perda crescia com a taxa (5–6 Mbps: 28% dos segundos; 7+:
+68–100%), e cada perda virava ~1,1 s congelado — o viewer retinha a imagem e pedia IDR, e o IDR
+(~127 KB de uma vez) se perdia na mesma rede cheia. Não há mais keyframe periódico nem rajada
+para quem entra: um IDR na conexão e os pedidos do viewer que ainda não decodificou nada
+(piso de 1 s, `MinForcedKeyFrameGap`). **Compatibilidade sem mudar o protocolo:** o viewer
+detecta o SEI *recovery point* (`ContainsRecoveryPointSei`) e só então para de reter/pedir
+(`ShouldHoldForKeyFrameOnLoss`); host até a 2.3.0 não manda o SEI e recebe o comportamento
+antigo, e viewer antigo numa host nova segue pedindo IDR, atendido no piso de 1 s. Opção com nome errado no `x264-params` é ignorada em silêncio — o
 `EncoderQualityTests` lê as opções efetivas que o x264 grava no primeiro quadro. Sem nenhum peer conectado o host **não codifica**
 (`ShouldEncode`); o fps mostrado e o aviso de saúde (`DecideHealthWarning`) olham a captura.
 Medições e alternativas descartadas (AMF, decode por GPU) em `auditorias/11-performance.md`.
