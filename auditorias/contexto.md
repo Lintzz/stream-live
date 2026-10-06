@@ -32,6 +32,7 @@ Atualizado em: 2026-10-06
 ## Como rodar e gerar build
 - Tipo: .NET 8 WPF (net8.0-windows10.0.19041.0), SDK local em .dotnet/
 - Rodar (teste rápido): `.\.dotnet\dotnet.exe build StreamLive.sln -c Release` e abrir `src\StreamLiveApp\bin\Release\net8.0-windows10.0.19041.0\StreamLiveApp.exe --demo` (espere ~5 s pelo MainWindowHandle)
+- Rodar para testar live real (encoder, rede): o mesmo .exe sem `--demo` — sobe a 8080 e abre o Radmin; o `--demo` não passa pelo encoder
 - Antes de abrir: conferir `Get-Process StreamLiveApp`. Instância aberta pode estar transmitindo para amigos — perguntar antes de encerrar. Sem `--demo`, duas instâncias brigam pela porta 8080
 - Logs: `%LOCALAPPDATA%\StreamLiveApp\error.log` e `audio_error.log`
 - Build (skill `/build`): `if (Test-Path publish_zip) { Remove-Item -Recurse -Force publish_zip }; .\.dotnet\dotnet.exe publish src\StreamLiveApp\StreamLiveApp.csproj -c Release -r win-x64 --self-contained true -o publish_zip; & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" build\setup.iss` → `StreamLive_Setup.exe` na raiz (copiar para builds/windows/ com a versão no nome)
@@ -39,7 +40,7 @@ Atualizado em: 2026-10-06
 - Versão atual: 2.1.0 · última entrega: v2.1.0, 2026-10-05, publicada no GitHub (https://github.com/Lintzz/stream-live/releases/tag/v2.1.0); builds/windows/StreamLive-Setup-2.1.0.exe (121 MB) + .sha256; 244 testes; anterior: v2.0.0 (mesmo dia)
 - Asset da release: sempre `StreamLive_Setup.exe` + `StreamLive_Setup.exe.sha256` (nome usado por todas as releases); a cópia em builds/ leva a versão no nome
 - Versão mora em: `<Version>` do StreamLiveApp.csproj (gera AppInfo.Version e build/version.iss)
-- Dependências conferidas em: 2026-10-05 — 0 vulnerabilidades depois da subida para SIPSorcery 10.0.17 + FFmpeg 8.1.2; NAudio e Vortice atrasados
+- Dependências conferidas em: 2026-10-06 — 0 vulnerabilidades (app e testes); atrasadas: NAudio 2.2.1→3.1.0 (major), Vortice 3.6.2→3.8.3, System.Drawing.Common 10.0.11→10.0.12, Websocket.Client 5.5.0→5.5.1
 - Detectado em: 2026-10-05
 
 ## Stack e serviços
