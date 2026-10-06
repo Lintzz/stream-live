@@ -24,5 +24,10 @@ Referência: app desktop, não site — Core Web Vitals não se aplicam. Medido 
 - 🔍 Live real num jogo pesado (CPU perto de 100%): fps sustentado, imagem com o teto de 8 Mbps, uso de CPU do host com e sem amigo assistindo
 - 🔍 Upload do host: ~8 Mbps de vídeo + 1,4 Mbps de áudio por amigo no pico
 
+## Atualização 2026-10-06 (nova-feature qualidade-de-video)
+- Encoder: ultrafast + deblock/AQ/8x8 + me=hex subme=2 + keyint=600. CPU ~116% → ~179% de 1 núcleo (teto de 1,5× aceito pelo dono); movimento rápido sai do teto (8,4 → 4,5 Mbps) e o pior trecho melhora ~5 dB. Detalhes em auditorias/features/qualidade-de-video.md
+- Keyframe periódico 2 s → 5 s; o x264 não manda mais keyframe próprio a cada 1 s
+- 🔍 Pendente, 2026-10-06: live real em jogo pesado com a 2.1.1 — fps, CPU do host e pacotes perdidos no viewer (somar à verificação manual acima)
+
 ## Pendências de domínio
 - Não se aplica
