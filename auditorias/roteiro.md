@@ -6,10 +6,10 @@ Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · A
 - [ ] Teste com um amigo na 2.1.0 publicada (Radmin na bandeja, on-line sozinho, fechar junto)
 
 ## Depois
-- [ ] `/build` — 2.3.0 (menor) com o modal e o card de transmitir
 - [ ] `/14-revisao-geral` de novo, depois da release, para fechar em 🟢
 
 ## Concluídas
+- [x] `/build` — 06/10 (v2.3.0 publicada: modal de transmitir com miniaturas, card de transmitir, selo AO VIVO)
 - [x] `/nova-feature` — 06/10 (card de transmitir na lista, selo AO VIVO na barra de título, janela 1200×760; 280 testes)
 - [x] `/nova-feature` — 06/10 (modal de transmitir: tela pela miniatura, ninguém marcado = pública, Trocar tela; 269 testes)
 - [x] `/build` — 05/10 (v2.1.0 publicada: ícone novo + Radmin automático)

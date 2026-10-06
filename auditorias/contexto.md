@@ -37,7 +37,7 @@ Atualizado em: 2026-10-06
 - Logs: `%LOCALAPPDATA%\StreamLiveApp\error.log` e `audio_error.log`
 - Build (skill `/build`): `if (Test-Path publish_zip) { Remove-Item -Recurse -Force publish_zip }; .\.dotnet\dotnet.exe publish src\StreamLiveApp\StreamLiveApp.csproj -c Release -r win-x64 --self-contained true -o publish_zip; & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" build\setup.iss` → `StreamLive_Setup.exe` na raiz (copiar para builds/windows/ com a versão no nome)
 - Release: anexar um `.exe` e o `.sha256` dele: `(Get-FileHash <exe> -Algorithm SHA256).Hash.ToLower() + "  <nome do exe>" | Set-Content <exe>.sha256`
-- Versão atual: 2.2.0 · última entrega: v2.2.0, 2026-10-06, publicada no GitHub (https://github.com/Lintzz/stream-live/releases/tag/v2.2.0); builds/windows/StreamLive-Setup-2.2.0.exe (121 MB) + .sha256; 254 testes; publicada sem a live de teste com amigo, por decisão do dono; anterior: v2.1.0 (2026-10-05)
+- Versão atual: 2.3.0 · última entrega: v2.3.0, 2026-10-06, publicada no GitHub (https://github.com/Lintzz/stream-live/releases/tag/v2.3.0); builds/windows/StreamLive-Setup-2.3.0.exe (121 MB) + .sha256; 280 testes; sem live de teste (captura, encoder e rede não mudaram); anterior: v2.2.0 (2026-10-06)
 - Asset da release: sempre `StreamLive_Setup.exe` + `StreamLive_Setup.exe.sha256` (nome usado por todas as releases); a cópia em builds/ leva a versão no nome
 - Versão mora em: `<Version>` do StreamLiveApp.csproj (gera AppInfo.Version e build/version.iss)
 - Dependências conferidas em: 2026-10-06 — 0 vulnerabilidades (app e testes); atrasadas: NAudio 2.2.1→3.1.0 (major), Vortice 3.6.2→3.8.3, System.Drawing.Common 10.0.11→10.0.12, Websocket.Client 5.5.0→5.5.1
@@ -59,8 +59,8 @@ Atualizado em: 2026-10-06
 - Desde a 2.0 (ainda não lançada): protocolo de sala v2 (salt por sala, chaves separadas), bloqueio após 5 senhas erradas, descarte do que não decifra; desfazer remoção de amigo; confirmação ao fechar com amigos assistindo; validação de IP; uso completo pelo teclado e leitor de tela; vídeo com teto de 8 Mbps e encode só com público
 - Desde a 2.1.0 (2026-10-05): ícone novo; Radmin aberto sozinho na bandeja (/minimized) quando está fechado na abertura do app, e ligado (on-line) sozinho quando sobe off-line; ao fechar, confirmação com "Fechar o Radmin VPN também" (lembrada)
 - Desde a 2.2.0 (2026-10-06): encoder com deblock, AQ e busca de movimento (movimento rápido com metade do bitrate e sem blocos), keyframe periódico a cada 5 s e nenhum automático do x264
-- Ainda não lançado (2.3.0): modal de transmitir com miniatura das telas, "Quem pode ver" (ninguém marcado = pública) e "Trocar tela" durante a live; caixas de marcar no tema escuro — ver auditorias/features/modal-de-transmitir.md
-- Ainda não lançado (2.3.0): Transmitir e estado da live num card no rodapé da lista de amigos (faixa do topo removida), selo "AO VIVO · N" na barra de título, janela abre em 1200×760 — ver auditorias/features/card-de-transmitir.md
+- Desde a 2.3.0 (2026-10-06): modal de transmitir com miniatura das telas, "Quem pode ver" (ninguém marcado = pública) e "Trocar tela" durante a live; caixas de marcar no tema escuro — ver auditorias/features/modal-de-transmitir.md
+- Desde a 2.3.0: Transmitir e estado da live num card no rodapé da lista de amigos (faixa do topo removida), selo "AO VIVO · N" na barra de título, janela abre em 1200×760 — ver auditorias/features/card-de-transmitir.md
 - 280 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
 
 ## Planejado, ainda não feito
