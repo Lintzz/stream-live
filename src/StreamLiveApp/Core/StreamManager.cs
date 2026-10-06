@@ -28,25 +28,18 @@ namespace StreamLiveApp
         private readonly object _encoderLock = new object();
         private int _isEncoding = 0;
 
-        // Keyframe por tempo decorrido, não por contagem de frames: a taxa real de captura
-        // varia bastante, então "a cada 120 frames" dava um intervalo imprevisível.
-        // Já foi 2 s. Hoje é só rede de segurança: perda de pacote pede keyframe na hora
-        // (REQUEST_KEYFRAME) e quem entra ganha a rajada. Cada keyframe de 1080p é uma rajada
-        // de ~150 KB de UDP, e rajada é o que se perde na VPN e vira quadradinho em quem assiste.
-        private static readonly TimeSpan KeyFrameInterval = TimeSpan.FromSeconds(5);
+        // Não há mais keyframe por tempo nem rajada de keyframes para quem entra: com o
+        // intra-refresh (ver CreateH264Encoder) a imagem se renova sozinha a cada
+        // IntraRefreshPeriodFrames, sem IDR. Já foram um IDR a cada 2 s, depois 5 s, mais uma
+        // rajada de um a cada 400 ms nos 4 s após alguém entrar — cada um ~127–150 KB de UDP de
+        // uma vez, e numa live real (2026-10-06) eram essas rajadas que se perdiam e viravam
+        // congelamento. Sobra o IDR sob demanda: um quando alguém conecta, e o que o viewer pede
+        // enquanto ainda não decodificou nada (ou, se ele for da 2.3.0 ou anterior, a cada perda).
         private readonly Stopwatch _keyFrameClock = Stopwatch.StartNew();
-        private TimeSpan _lastKeyFrame = TimeSpan.Zero;
 
-        // Logo depois que alguem entra, o keyframe sai com frequencia bem maior. O IDR unico
-        // disparado no "connected" costuma se perder — o ICE reporta conexao antes de a midia
-        // fluir de verdade — e sem isso o viewer ficava o ciclo inteiro sem imagem.
-        private static readonly TimeSpan KeyFrameBurstWindow = TimeSpan.FromSeconds(4);
-        private static readonly TimeSpan KeyFrameBurstInterval = TimeSpan.FromMilliseconds(400);
-        private TimeSpan _burstUntil = TimeSpan.MinValue;
-
-        // Piso entre keyframes atendidos sob demanda: com varios viewers pedindo ao mesmo
-        // tempo, sem isto o encoder mandaria so IDR e a banda explodiria.
-        private static readonly TimeSpan MinForcedKeyFrameGap = TimeSpan.FromMilliseconds(300);
+        // Piso entre keyframes atendidos sob demanda. Era 300 ms; viewer antigo pede um a cada
+        // perda, e numa rede cheia isso virava um IDR por segundo — a rajada que piorava a perda.
+        private static readonly TimeSpan MinForcedKeyFrameGap = TimeSpan.FromSeconds(1);
         private TimeSpan _lastForcedKeyFrame = TimeSpan.MinValue;
 
         // Viewer: o video chega mas nada decodifica ate vir um keyframe. Se isso durar,
@@ -64,6 +57,10 @@ namespace StreamLiveApp
         // segura o último quadro bom em vez de exibir o lixo.
         private static readonly TimeSpan MaxLossHold = TimeSpan.FromSeconds(1);
         private bool _holdingForKeyFrame;
+
+        // A host manda recovery point (intra-refresh): perda não retém a imagem nem pede IDR.
+        // Ver ShouldHoldForKeyFrameOnLoss.
+        private volatile bool _hostRefreshesIntra;
         private TimeSpan _holdSince;
         private int _videoPacketsLostLog;
 
@@ -272,7 +269,7 @@ namespace StreamLiveApp
 
                 // Sem ninguém conectado o quadro só serve à prévia: codificar custava mais de um
                 // núcleo numa live sem público. Quem entra ganha uma rajada de keyframes ao
-                // conectar (StartKeyFrameBurst), então nada se perde por pular aqui.
+                // conectar (ForceJoinKeyFrame), então nada se perde por pular aqui.
                 if (!ShouldEncode(ContarPeers().conectados)) return;
 
                 if (System.Threading.Interlocked.CompareExchange(ref _isEncoding, 1, 0) != 0)
@@ -294,13 +291,6 @@ namespace StreamLiveApp
                             {
                                 try
                                 {
-                                    var now = _keyFrameClock.Elapsed;
-                                    if (ShouldForcePeriodicKeyFrame(now, _lastKeyFrame, _burstUntil))
-                                    {
-                                        _pendingIdrReason ??= now <= _burstUntil ? "entrada" : "periodico";
-                                        _lastKeyFrame = now;
-                                        ForceIdr(_videoEncoder);
-                                    }
                                     idrReason = _pendingIdrReason;
                                     _pendingIdrReason = null;
                                     if (_videoEncoder is FFmpegVideoEncoder ffmpegEncoder) PrepareEncoder(ffmpegEncoder, width, height);
@@ -543,7 +533,16 @@ namespace StreamLiveApp
         internal const int TargetFps = 60;
 
         /// <summary>Teto do vídeo por amigo, em kbps.</summary>
-        internal const int MaxVideoKbps = 8000;
+        internal const int MaxVideoKbps = 5000;
+
+        /// <summary>
+        /// Quadros de uma varredura do intra-refresh (o x264 usa o keyint como período). Uma perda
+        /// some da imagem no fim da varredura que começa depois dela — pior caso, dois períodos:
+        /// com 30, até 1 s a 60 fps (2 s se a captura estiver a 30). Com 60 eram até 2 s de
+        /// imagem com defeito, medido no <c>IntraRefreshTests</c>; mais curto custa mais bits
+        /// intra por quadro, dentro do mesmo teto.
+        /// </summary>
+        internal const int IntraRefreshPeriodFrames = 30;
 
         /// <summary>
         /// libx264 em qualidade constante (CRF 23, o padrão que já rodava) com teto de bitrate
@@ -564,9 +563,15 @@ namespace StreamLiveApp
         /// do teto. O teto de CPU aceito pelo dono foi ~1,5× o de antes; o jogo segue com
         /// prioridade (processo BelowNormal). O veryfast dá a mesma imagem pelo mesmo custo, mas
         /// liga scenecut: troca de cena em jogo viraria keyframe extra, e keyframe é rajada.
-        /// keyint=600: o x264 mandava um keyframe por segundo sozinho (o padrão é igual ao fps);
-        /// agora keyframe só sai quando o app pede (ForceIdr), e cada um é uma rajada de ~150 KB.
-        /// <c>EncoderQualityTests</c> lê as opções efetivas no quadro e trava tudo isso.
+        /// intra-refresh: em vez de IDR (uma imagem inteira de ~127 KB num quadro só), uma faixa
+        /// de blocos intra varre a imagem ao longo de keyint quadros. Sem rajada, e uma perda de
+        /// pacote se corrige sozinha numa varredura, sem o viewer reter a imagem. Antes era
+        /// keyint=600 e IDR só sob demanda — e o IDR pedido depois de cada perda saía justo com a
+        /// rede cheia (live de 2026-10-06: 177 congelamentos de ~1,1 s). O vbv-bufsize de 1/5
+        /// do teto (0,2 s) limita o tamanho de cada quadro, que é o que vira rajada de UDP.
+        /// Teto de 5 Mbps: na mesma live a perda subia com a taxa e passava de metade dos segundos
+        /// acima de 6 Mbps; 8 Mbps não cabia no caminho entre as duas máquinas.
+        /// <c>EncoderQualityTests</c> e <c>IntraRefreshTests</c> travam tudo isso.
         /// </summary>
         internal static FFmpegVideoEncoder CreateH264Encoder()
         {
@@ -575,9 +580,9 @@ namespace StreamLiveApp
                 { "preset", "ultrafast" },
                 { "tune", "zerolatency" },
                 { "crf", "23" },
-                { "x264-params", $"vbv-maxrate={MaxVideoKbps}:vbv-bufsize={MaxVideoKbps / 2}" +
+                { "x264-params", $"vbv-maxrate={MaxVideoKbps}:vbv-bufsize={MaxVideoKbps / 5}" +
                     ":deblock=0,0:aq-mode=1:8x8dct=1:partitions=i8x8,i4x4:me=hex:subme=2" +
-                    ":keyint=600:min-keyint=600" }
+                    $":keyint={IntraRefreshPeriodFrames}:intra-refresh=1" }
             };
             return new FFmpegVideoEncoder(x264Options);
         }
@@ -592,17 +597,7 @@ namespace StreamLiveApp
         internal static void PrepareEncoder(FFmpegVideoEncoder encoder, int width, int height)
             => encoder.InitialiseEncoder(FFmpeg.AutoGen.AVCodecID.AV_CODEC_ID_H264, width, height, TargetFps);
 
-        /// <summary>
-        /// Keyframe por tempo: a cada <see cref="KeyFrameInterval"/>, ou bem mais seguido na
-        /// janela logo depois de alguém entrar.
-        /// </summary>
-        internal static bool ShouldForcePeriodicKeyFrame(TimeSpan now, TimeSpan lastKeyFrame, TimeSpan burstUntil)
-        {
-            var interval = now <= burstUntil ? KeyFrameBurstInterval : KeyFrameInterval;
-            return now - lastKeyFrame >= interval;
-        }
-
-        public void ForceKeyFrame() => StartKeyFrameBurst();
+        public void ForceKeyFrame() => ForceJoinKeyFrame();
 
         /// <summary>
         /// Faz o próximo quadro sair IDR. Chamar sempre sob o <c>_encoderLock</c> de quem é dono do encoder.
@@ -621,19 +616,18 @@ namespace StreamLiveApp
             else encoder?.ForceKeyFrame();
         }
 
-        /// <summary>Abre uma janela em que os keyframes saem com frequencia bem maior.</summary>
-        private void StartKeyFrameBurst()
+        /// <summary>
+        /// Um IDR para quem acabou de conectar. Se ele se perder (o ICE avisa "conectado" antes
+        /// de a mídia fluir), o viewer pede outro enquanto não decodificar nada.
+        /// </summary>
+        private void ForceJoinKeyFrame()
         {
-            var now = _keyFrameClock.Elapsed;
-            _burstUntil = now + KeyFrameBurstWindow;
-
             lock (_encoderLock)
             {
                 _pendingIdrReason = "entrada";
                 try { ForceIdr(_videoEncoder); } catch { }
             }
-            _lastKeyFrame = now;
-            _lastForcedKeyFrame = now;
+            _lastForcedKeyFrame = _keyFrameClock.Elapsed;
         }
 
         /// <summary>
@@ -651,7 +645,6 @@ namespace StreamLiveApp
 
             DetailedDiagnostics.HostKeyFrameRequest(DiagLabel, served: true);
             _lastForcedKeyFrame = now;
-            _lastKeyFrame = now;
             lock (_encoderLock)
             {
                 _pendingIdrReason = "pedido do viewer";
@@ -773,7 +766,8 @@ namespace StreamLiveApp
             DetailedDiagnostics.SetSampler(DiagLabel, false, () =>
             {
                 var buffered = _waveProvider?.BufferedDuration;
-                return buffered == null ? "bufAudio=-" : $"bufAudio={(int)buffered.Value.TotalMilliseconds}ms";
+                var refresh = _hostRefreshesIntra ? "refresh=SIM" : "refresh=nao";
+                return buffered == null ? $"bufAudio=- {refresh}" : $"bufAudio={(int)buffered.Value.TotalMilliseconds}ms {refresh}";
             });
 
             // Enquanto chegar video sem nada decodificar, insiste no pedido de keyframe.
@@ -839,6 +833,8 @@ namespace StreamLiveApp
         {
             System.Threading.Interlocked.Add(ref _videoPacketsLostLog, quantos);
 
+            if (!ShouldHoldForKeyFrameOnLoss(_hostRefreshesIntra)) return;
+
             if (!_holdingForKeyFrame)
             {
                 _holdingForKeyFrame = true;
@@ -869,6 +865,74 @@ namespace StreamLiveApp
                     if ((annexB[i + 3] & 0x1F) == 5) return true;
                     i += 2;
                 }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// O que o viewer faz numa perda de pacote. Host com intra-refresh (2.4+) se recupera
+        /// sozinha numa varredura: reter a imagem só congelaria a tela, e pedir IDR traria de
+        /// volta a rajada que causava a perda. Host antiga (até a 2.3.0) só se recupera com IDR:
+        /// aí vale o de antes — segura o último quadro bom e pede keyframe.
+        /// </summary>
+        internal static bool ShouldHoldForKeyFrameOnLoss(bool hostRefreshesIntra) => !hostRefreshesIntra;
+
+        /// <summary>
+        /// O quadro traz um SEI "recovery point" (tipo 6)? O x264 o grava no começo de cada
+        /// varredura do intra-refresh — é assim que o viewer sabe que a host se recupera sozinha,
+        /// sem mudar o protocolo de sinalização (host antiga não manda nada parecido).
+        /// </summary>
+        internal static bool ContainsRecoveryPointSei(byte[] annexB)
+        {
+            for (int i = 0; i + 3 < annexB.Length; i++)
+            {
+                if (annexB[i] != 0 || annexB[i + 1] != 0 || annexB[i + 2] != 1) continue;
+
+                int start = i + 3;
+                if ((annexB[start] & 0x1F) == 6 && SeiHasRecoveryPoint(annexB, start + 1)) return true;
+                i += 2;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Percorre as mensagens SEI de uma NAL (a partir do byte depois do cabeçalho). O tamanho
+        /// de cada mensagem conta bytes do RBSP, então os bytes de emulação (00 00 03) que
+        /// aparecem no meio — o texto de opções do x264 é longo — são descontados ao pular.
+        /// </summary>
+        private static bool SeiHasRecoveryPoint(byte[] data, int pos)
+        {
+            int zeros = 0;
+            int ReadByte()
+            {
+                if (pos >= data.Length) return -1;
+                // 00 00 03: o 03 é emulação, não dado.
+                if (zeros >= 2 && data[pos] == 3) { pos++; zeros = 0; if (pos >= data.Length) return -1; }
+                int b = data[pos++];
+                zeros = b == 0 ? zeros + 1 : 0;
+                return b;
+            }
+
+            while (pos < data.Length)
+            {
+                // Próximo início de NAL: acabou esta.
+                if (pos + 2 < data.Length && data[pos] == 0 && data[pos + 1] == 0 && data[pos + 2] == 1) return false;
+
+                int type = 0, b;
+                while ((b = ReadByte()) == 0xFF) type += 255;
+                if (b < 0) return false;
+                type += b;
+
+                // rbsp_trailing_bits: 0x80 onde viria um novo tipo de mensagem.
+                if (b == 0x80 && type == 0x80) return false;
+
+                int size = 0;
+                while ((b = ReadByte()) == 0xFF) size += 255;
+                if (b < 0) return false;
+                size += b;
+
+                if (type == 6) return true;
+                for (int k = 0; k < size; k++) if (ReadByte() < 0) return false;
             }
             return false;
         }
@@ -1079,6 +1143,20 @@ namespace StreamLiveApp
                     // keyframe nunca vir: aí volta a mostrar o que houver, como antes.
                     DetailedDiagnostics.ViewerFrame(DiagLabel, payload.Length, ContainsIdrSlice(payload));
 
+                    if (!_hostRefreshesIntra && ContainsRecoveryPointSei(payload))
+                    {
+                        _hostRefreshesIntra = true;
+                        DiagnosticLog.Info("Video", "viewer: host com intra-refresh; perda de pacote não retém mais a imagem");
+                        DetailedDiagnostics.Event(DiagLabel, "host com intra-refresh: perda não retém a imagem nem pede keyframe");
+
+                        // Uma retenção aberta antes de saber disso não tem IDR para esperar.
+                        if (_holdingForKeyFrame)
+                        {
+                            _holdingForKeyFrame = false;
+                            DetailedDiagnostics.ViewerHold(DiagLabel, false);
+                        }
+                    }
+
                     bool segurando = _holdingForKeyFrame;
                     if (segurando && (ContainsIdrSlice(payload) || _keyFrameClock.Elapsed - _holdSince > MaxLossHold))
                     {
@@ -1163,7 +1241,7 @@ namespace StreamLiveApp
                 OnPeerStateChanged?.Invoke(state);
                 if (state == RTCPeerConnectionState.connected && _isHost)
                 {
-                    StartKeyFrameBurst();
+                    ForceJoinKeyFrame();
                 }
             };
 
