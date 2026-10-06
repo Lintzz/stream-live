@@ -44,6 +44,7 @@ Trocar tela abre com a Tela 2). Miniatura real conferida nas duas telas desta m�
 temporário (não versionado, sem salvar imagem).
 
 ## Pendente
+- ~~GIF do README~~ regravado em 2026-10-06 (cursor desenhado nos quadros, sem mexer no mouse)
 - GIF do README (`docs/images/demo.gif`) ainda mostra o modal antigo — Baixa. Foi gravado com o
   cursor de verdade; regravar mexe no mouse, então só com o PC liberado e o dono de acordo.
   Os 5 prints foram regravados

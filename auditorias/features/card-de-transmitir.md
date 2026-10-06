@@ -43,6 +43,7 @@ Verificação completa: 280 testes (eram 269) + smoke do .exe, 0 avisos. Prints 
 regravados em 1200×760.
 
 ## Pendente
+- ~~GIF do README~~ regravado em 2026-10-06 (cursor desenhado nos quadros, sem mexer no mouse)
 - GIF do README segue com a interface antiga (mesma pendência do modal-de-transmitir.md) — Baixa
 - O `--demo` não mostra o aviso de saúde: o selo vermelho foi conferido só pelo código
 

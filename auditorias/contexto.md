@@ -64,9 +64,7 @@ Atualizado em: 2026-10-06
 - 280 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
 
 ## Planejado, ainda não feito
-- Teste com amigo na 2.1.0 publicada: Radmin abrindo na bandeja, ficando on-line e fechando junto (ver auditorias/features/radmin-e-icone.md)
-- Regravar o GIF do README com o modal novo (precisa do mouse; só com o PC liberado)
-- Teste com amigo da qualidade de vídeo (2.2.0, já publicada sem esse teste): fps, CPU e perda no diagnostico.log — ver auditorias/features/qualidade-de-video.md
+- Investigar travadinhas no início das lives (perda de pacote de vídeo, ver Decisões 2026-10-06): registrar no log o caminho de rede escolhido pelo ICE; depois, conforme o resultado, espaçar a rajada do keyframe ou baixar o teto
 
 ## Radmin VPN (levantado em 2026-10-05, Radmin 2.1.1 / 2.1.4951.1 nesta máquina)
 - Serviço é `RvControlSvc` (Auto), não `RvpnService`; a GUI é `RvRvpnGui.exe`, manifest `asInvoker` (UI Automation funciona sem admin)
@@ -78,6 +76,7 @@ Atualizado em: 2026-10-06
 - O IP 26.x é da conta, não da rede: adaptador "Radmin VPN" com 26.x prova que o Radmin está ligado, não que você está numa rede específica
 
 ## Decisões
+- 2026-10-06: live real com amiga feita pelo dono (2.2.0/2.3.0) — tudo funcionando. Travadinhas nos primeiros ~15 min: o log do viewer mostrou 30–500 pacotes de vídeo perdidos a cada 10 s (13:30–13:37), quase zero depois. Perda contada por sequência RTP = rede entre as máquinas, não CPU da host; cada perda congela o quadro até o keyframe pedido. O caminho escolhido pelo ICE (Radmin 26.x, IPv6 público ou Teredo 2001:0::) não é registrado — primeira coisa a resolver
 - Áudio em PCM pelo WebSocket, não Opus — o Opus (v1.0.18–21) nunca funcionou em campo (detalhe no CLAUDE.md)
 - Discord sempre excluído do áudio; "Modo leve" e toggle GDI removidos (fixos)
 - 2026-10-05: perfil B; objetivo: verificar e corrigir, depois continuar desenvolvendo

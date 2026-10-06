@@ -2,13 +2,13 @@
 Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · Atualizado em: 2026-10-06
 
 ## Próximo
-- [ ] Teste de live real com um amigo, já na 2.0.0 publicada (roteiro em auditorias/12-pre-lancamento.md)
 - [ ] Teste com um amigo na 2.1.0 publicada (Radmin na bandeja, on-line sozinho, fechar junto)
 
 ## Depois
 - [ ] `/14-revisao-geral` de novo, depois da release, para fechar em 🟢
 
 ## Concluídas
+- [x] Live real com amiga — 06/10 (tudo funcionando; travadinhas no início por perda de pacote, em investigação)
 - [x] `/build` — 06/10 (v2.3.0 publicada: modal de transmitir com miniaturas, card de transmitir, selo AO VIVO)
 - [x] `/nova-feature` — 06/10 (card de transmitir na lista, selo AO VIVO na barra de título, janela 1200×760; 280 testes)
 - [x] `/nova-feature` — 06/10 (modal de transmitir: tela pela miniatura, ninguém marcado = pública, Trocar tela; 269 testes)
