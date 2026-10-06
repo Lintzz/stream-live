@@ -5,6 +5,20 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 
 ## [Não lançado]
 
+## [2.3.0] - 2026-10-06
+
+### Adicionado
+- Ao clicar em Transmitir, você escolhe a tela vendo o que está nela, como no Discord: cada tela aparece em miniatura, com a resolução e qual é a principal. Nada de adivinhar se é a "Tela 1" ou a "Tela 2".
+- Durante a live, o botão "Trocar tela" muda a tela transmitida sem derrubar ninguém.
+- Selo "AO VIVO" na barra de título enquanto você transmite, com quantas pessoas estão assistindo. Ele continua à vista quando você abre a live de um amigo; clique nele para ver os controles da sua transmissão.
+
+### Alterado
+- Live privada ficou mais simples: não existe mais a caixa "Live privada". Se você não marcar ninguém em "Quem pode ver", a live é para todos os seus amigos; se marcar alguém, só essas pessoas veem. Toda live começa sem ninguém marcado.
+- O botão Transmitir e tudo da sua live (ao vivo, privada, quem assiste, parar) foram para um card próprio embaixo da lista de amigos. A faixa que ficava no topo da janela saiu e o vídeo ganhou esse espaço.
+- "Gerenciar amigos" virou uma engrenagem no canto da lista de amigos.
+- O app abre maior (1200×760), para a janela de transmitir caber dentro dele.
+- Caixas de marcar e escolha de tela no tema escuro do app, sem o visual branco padrão do Windows.
+
 ## [2.2.0] - 2026-10-06
 
 ### Melhorado
