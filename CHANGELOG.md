@@ -5,6 +5,16 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 
 ## [Não lançado]
 
+## [2.4.0] - 2026-10-06
+
+### Melhorado
+- Fim das "travadinhas" de quem assiste: quando um pedaço da imagem se perde no caminho, a live não congela mais por um segundo esperando uma imagem completa — ela se corrige sozinha em menos de um segundo, sem parar. Numa live de teste, as travadas caíram de 178 para 2 e os pacotes perdidos foram de quase 1% para zero.
+- A transmissão usa no máximo 5 Mbps (era 8). Era acima disso que a conexão entre amigos na Radmin começava a perder pedaços da imagem. A nitidez cai um pouco só em cenas de muito movimento.
+- Transmitindo enquanto joga: se o computador não dá conta de 60 quadros por segundo, o app passa sozinho para 30, com cada quadro bem mais nítido — antes a imagem em movimento virava quadradinhos. Quando o computador folga, ele volta para 60.
+
+### Compatibilidade
+- Funciona junto com quem ainda está na 2.3.0: quem não atualizou continua assistindo e transmitindo normalmente, só sem as melhorias acima.
+
 ## [2.3.0] - 2026-10-06
 
 ### Adicionado
