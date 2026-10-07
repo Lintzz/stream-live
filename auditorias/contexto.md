@@ -37,7 +37,7 @@ Atualizado em: 2026-10-06
 - Logs: `%LOCALAPPDATA%\StreamLiveApp\error.log` e `audio_error.log`
 - Build (skill `/build`): `if (Test-Path publish_zip) { Remove-Item -Recurse -Force publish_zip }; .\.dotnet\dotnet.exe publish src\StreamLiveApp\StreamLiveApp.csproj -c Release -r win-x64 --self-contained true -o publish_zip; & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" build\setup.iss` → `StreamLive_Setup.exe` na raiz (copiar para builds/windows/ com a versão no nome)
 - Release: anexar um `.exe` e o `.sha256` dele: `(Get-FileHash <exe> -Algorithm SHA256).Hash.ToLower() + "  <nome do exe>" | Set-Content <exe>.sha256`
-- Versão atual: 2.3.0 · última entrega: v2.3.0, 2026-10-06, publicada no GitHub (https://github.com/Lintzz/stream-live/releases/tag/v2.3.0); builds/windows/StreamLive-Setup-2.3.0.exe (121 MB) + .sha256; 280 testes; sem live de teste (captura, encoder e rede não mudaram); anterior: v2.2.0 (2026-10-06)
+- Versão atual: 2.4.0 · última entrega: v2.4.0, 2026-10-06, publicada no GitHub (https://github.com/Lintzz/stream-live/releases/tag/v2.4.0); builds/windows/StreamLive-Setup-2.4.0.exe (121 MB) + .sha256; 313 testes; testada em live real (intra-refresh com a amiga; 60/30 fps jogando LoL/Valorant pelo dono); anterior: v2.3.0 (2026-10-06)
 - Asset da release: sempre `StreamLive_Setup.exe` + `StreamLive_Setup.exe.sha256` (nome usado por todas as releases); a cópia em builds/ leva a versão no nome
 - Versão mora em: `<Version>` do StreamLiveApp.csproj (gera AppInfo.Version e build/version.iss)
 - Dependências conferidas em: 2026-10-06 — 0 vulnerabilidades (app e testes); atrasadas: NAudio 2.2.1→3.1.0 (major), Vortice 3.6.2→3.8.3, System.Drawing.Common 10.0.11→10.0.12, Websocket.Client 5.5.0→5.5.1
@@ -64,7 +64,7 @@ Atualizado em: 2026-10-06
 - 280 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
 
 ## Planejado, ainda não feito
-- Live jogando com a build nova (60/30 automático) e depois publicar a 2.4.0 (intra-refresh + teto 5 Mbps, testado em live real em 2026-10-06: perda 0,93% → 0,00%, congelamentos 178 → 2) — ver auditorias/features/intra-refresh.md
+- (feito: 2.4.0 publicada) intra-refresh + teto 5 Mbps + 60/30 automático ( testado em live real em 2026-10-06: perda 0,93% → 0,00%, congelamentos 178 → 2) — ver auditorias/features/intra-refresh.md
 - Teto de vídeo adaptativo (baixar sozinho quando quem assiste perde pacote) — possível depois, decisão do dono 2026-10-06
 
 ## Radmin VPN (levantado em 2026-10-05, Radmin 2.1.1 / 2.1.4951.1 nesta máquina)
@@ -77,6 +77,7 @@ Atualizado em: 2026-10-06
 - O IP 26.x é da conta, não da rede: adaptador "Radmin VPN" com 26.x prova que o Radmin está ligado, não que você está numa rede específica
 
 ## Decisões
+- 2026-10-06: CPU alto era o dono assistindo a própria live (encode + decode na mesma máquina); transmitindo e jogando LoL fica ~50% da máquina. Encoder por hardware (AMF/NVENC/QSV) adiado por decisão do dono
 - 2026-10-06: 60 ou 30 fps automático (EncodeRateGovernor) — jogando, o encoder pulava metade dos quadros e a live usava só 2,5 de 5 Mbps; fixo em 30 recusado pelo dono (perderia os 60 de quem dá conta)
 - 2026-10-06: intra-refresh (keyint 30) no lugar do IDR sob demanda + teto 5 Mbps; viewer detecta o SEI recovery point e só então não retém a imagem (compatível com a 2.3.0 sem mudar o protocolo). Teto adaptativo fica para depois
 - 2026-10-06 18:00–18:37, live real com a build de diagnóstico (82 F8): vídeo pela Radmin (fdfd::), ping 15 ms, perda total 0,93%. 177 de 178 congelamentos = perda → imagem retida esperando keyframe, ~1,1 s cada (= teto MaxLossHold de 1 s: o keyframe pedido não chegou a tempo e a imagem volta com defeito). A perda cresce com a taxa: <1 Mbps 0% dos segundos, 3–5 Mbps ~16%, 5–6 28%, 6–7 58%, 7+ 68–100% — o caminho entre as máquinas satura em ~5–6 Mbps, abaixo do teto de 8 Mbps. Próximo: baixar o teto e/ou trocar o keyframe sob demanda por intra-refresh (ver resposta da sessão)

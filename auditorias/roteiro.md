@@ -2,12 +2,12 @@
 Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · Atualizado em: 2026-10-06
 
 ## Próximo
-- [ ] `/build` — 2.4.0 (menor) com o intra-refresh e o teto de 5 Mbps
 
 ## Depois
 - [ ] `/14-revisao-geral` de novo, depois da release, para fechar em 🟢
 
 ## Concluídas
+- [x] `/build` — 06/10 (v2.4.0 publicada: intra-refresh, teto 5 Mbps, 60/30 fps automático)
 - [x] `/nova-feature` — 06/10 (intra-refresh + teto 5 Mbps; live real: perda 0,93% → 0,00%, congelamentos 178 → 2)
 - [x] Live real com amiga — 06/10 (tudo funcionando; travadinhas no início por perda de pacote, em investigação)
 - [x] `/build` — 06/10 (v2.3.0 publicada: modal de transmitir com miniaturas, card de transmitir, selo AO VIVO)
