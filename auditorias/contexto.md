@@ -64,7 +64,7 @@ Atualizado em: 2026-10-06
 - 280 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
 
 ## Planejado, ainda não feito
-- Intra-refresh + teto 5 Mbps (ainda não lançado, 2.4.0): live de teste com a amiga transmitindo na versão nova — ver auditorias/features/intra-refresh.md
+- Publicar a 2.4.0 (intra-refresh + teto 5 Mbps, testado em live real em 2026-10-06: perda 0,93% → 0,00%, congelamentos 178 → 2) — ver auditorias/features/intra-refresh.md
 - Teto de vídeo adaptativo (baixar sozinho quando quem assiste perde pacote) — possível depois, decisão do dono 2026-10-06
 
 ## Radmin VPN (levantado em 2026-10-05, Radmin 2.1.1 / 2.1.4951.1 nesta máquina)

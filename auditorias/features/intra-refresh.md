@@ -42,13 +42,12 @@ fluxo limpo no fim da varredura que começa depois da perda — período 60: per
 | 2 | Bitrate real e rajadas | 11-performance | ✅ | 5,0 Mbps; maior quadro 219 → 21 KB; `IntraRefreshTests` trava "sem IDR no meio, nenhum quadro > 3× a mediana" |
 | 3 | Opções efetivas do x264 | 11-performance | ✅ | `EncoderQualityTests`: keyint=30, intra_refresh=1, vbv_maxrate=5000, vbv_bufsize=1000 |
 | 4 | Recuperação sem congelar | 11-performance | ✅ | `IntraRefreshTests.DecoderHealsByItselfAfterALostFrameWithoutStopping` |
-| 5 | Live real com a host nova | 11-performance | 🔍 | Pendente: a amiga instala o instalador de teste e transmite; comparar o log detalhado com o de 2026-10-06 |
+| 5 | Live real com a host nova | 11-performance | ✅ | 2026-10-06 21:36–21:52, amiga transmitindo na versão nova, pela Radmin: refresh=SIM detectado; perda 0,93% → 0,00% (6 pacotes em 473 mil); congelamentos 178 de ~1,1 s → 2 de ~0,3 s; taxa mediana 3,8 Mbps (p95 4,8). Dono: "não travou nada"; qualidade cai "bem pouco" às vezes |
 
 Verificação: 300 testes (eram 295). `PeriodicKeyFrameTests` removido junto com a regra.
 
 ## Pendente
-- Live de teste com a amiga transmitindo na versão nova (instaladores de teste 2.3.0-dev e 2.3.0-diag)
-- Nitidez em cena de muito movimento a 5 Mbps: avaliar na live
+- Nitidez a 5 Mbps: o dono nota queda pequena às vezes e aceitou (2026-10-06)
 - Teto adaptativo (baixar sozinho quando quem assiste perde pacote): possível depois, por decisão do dono
 
 ## Versão
