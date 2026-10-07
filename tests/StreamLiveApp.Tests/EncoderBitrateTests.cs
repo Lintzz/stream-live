@@ -72,4 +72,33 @@ public class EncoderBitrateTests
             string.Join(", ", sizes.OrderByDescending(x => x).Take(4).Select(x => x / 1024)) +
             $"; mediana {sizes.OrderBy(x => x).ElementAt(sizes.Count / 2) / 1024} KB");
     }
+
+    /// <summary>
+    /// Quando o encoder não dá conta e só metade dos quadros sai, a taxa declarada tem que
+    /// acompanhar: declarado a 60, o teto vira fatias de 1/60 s e só 30 saem — a live usava
+    /// metade do teto (medido numa live real de Valorant: 2,5 de 5 Mbps). Declarado a 30, cada
+    /// quadro leva o dobro (ver EncodeRateGovernor).
+    /// </summary>
+    [Fact]
+    public void DeclaringThirtyGivesEachFrameTwiceTheBudget()
+    {
+        long BytesAt(int declaredFps)
+        {
+            using var encoder = StreamManager.CreateH264Encoder();
+            long total = 0;
+            int i = 0;
+            foreach (var frame in MovingDetail(StreamManager.TargetFps * 2))
+            {
+                if (i++ % 2 == 1) continue; // só metade dos quadros sai, como no jogo pesado
+                StreamManager.PrepareEncoder(encoder, Width, Height, declaredFps);
+                var encoded = encoder.EncodeVideo(Width, Height, frame, VideoPixelFormatsEnum.Bgra, VideoCodecsEnum.H264);
+                if (i > 20 && encoded != null) total += encoded.Length; // sem o IDR inicial
+            }
+            return total;
+        }
+
+        long at60 = BytesAt(60), at30 = BytesAt(EncodeRateGovernor.ReducedFps);
+        double ratio = (double)at30 / at60;
+        Assert.True(ratio > 1.6, $"declarar 30 deu {ratio:F2}× os bits de declarar 60 ({at30 / 1024} KB contra {at60 / 1024} KB)");
+    }
 }

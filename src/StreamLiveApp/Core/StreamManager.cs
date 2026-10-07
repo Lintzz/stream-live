@@ -226,6 +226,15 @@ namespace StreamLiveApp
         // Motivo do próximo IDR, para o diagnóstico detalhado dizer por que cada keyframe saiu.
         private string? _pendingIdrReason;
 
+        // 60 ou 30 quadros por segundo conforme o encoder dá conta (ver EncodeRateGovernor).
+        // _encoderFps é o que o encoder atual foi declarado; quando difere do alvo, o próximo
+        // quadro recria o encoder com a taxa nova.
+        private readonly EncodeRateGovernor _rateGovernor = new EncodeRateGovernor();
+        private int _encoderFps = EncodeRateGovernor.FullFps;
+        private long _lastTakenFrameTicks;
+        private int _statsSkippedBusy;
+        private long _statsEncodeTicks;
+
         public StreamManager()
         {
             EnsureMediaInitialized();
@@ -272,11 +281,18 @@ namespace StreamLiveApp
                 // conectar (ForceJoinKeyFrame), então nada se perde por pular aqui.
                 if (!ShouldEncode(ContarPeers().conectados)) return;
 
+                // A 30, um quadro a cada ~33 ms, regular — em vez de o encoder ocupado pular ao acaso.
+                long nowTicks = Stopwatch.GetTimestamp();
+                double msSinceTaken = (nowTicks - System.Threading.Interlocked.Read(ref _lastTakenFrameTicks)) * 1000.0 / Stopwatch.Frequency;
+                if (!EncodeRateGovernor.ShouldTakeFrame(msSinceTaken, _rateGovernor.Fps)) return;
+
                 if (System.Threading.Interlocked.CompareExchange(ref _isEncoding, 1, 0) != 0)
                 {
+                    System.Threading.Interlocked.Increment(ref _statsSkippedBusy);
                     DetailedDiagnostics.HostSkippedBusy(DiagLabel);
                     return; // Skip encoding if previous frame is still processing
                 }
+                System.Threading.Interlocked.Exchange(ref _lastTakenFrameTicks, nowTicks);
 
                 Task.Run(() =>
                 {
@@ -291,9 +307,19 @@ namespace StreamLiveApp
                             {
                                 try
                                 {
+                                    // Taxa declarada só muda recriando o encoder (o InitialiseEncoder
+                                    // não faz nada já inicializado) — sai um keyframe, por isso a
+                                    // regra do EncodeRateGovernor troca pouco.
+                                    int alvo = _rateGovernor.Fps;
+                                    if (alvo != _encoderFps)
+                                    {
+                                        ForceIdr(_videoEncoder);
+                                        _encoderFps = alvo;
+                                        _pendingIdrReason = $"troca para {alvo} fps";
+                                    }
                                     idrReason = _pendingIdrReason;
                                     _pendingIdrReason = null;
-                                    if (_videoEncoder is FFmpegVideoEncoder ffmpegEncoder) PrepareEncoder(ffmpegEncoder, width, height);
+                                    if (_videoEncoder is FFmpegVideoEncoder ffmpegEncoder) PrepareEncoder(ffmpegEncoder, width, height, _encoderFps);
                                     encoded = _videoEncoder.EncodeVideo(width, height, sample, format, VideoCodecsEnum.H264);
                                 }
                                 catch (Exception encodeEx)
@@ -315,8 +341,10 @@ namespace StreamLiveApp
                         {
                             System.Threading.Interlocked.Increment(ref _statsEncodedFrames);
                             System.Threading.Interlocked.Add(ref _statsEncodedBytes, encoded.Length);
+                            long encodeTicks = Stopwatch.GetTimestamp() - encodeStart;
+                            System.Threading.Interlocked.Add(ref _statsEncodeTicks, encodeTicks);
                             DetailedDiagnostics.HostEncoded(DiagLabel, encoded.Length,
-                                (Stopwatch.GetTimestamp() - encodeStart) * 1000.0 / Stopwatch.Frequency, idrReason);
+                                encodeTicks * 1000.0 / Stopwatch.Frequency, idrReason);
 
                             foreach (var pc in SnapshotConnectedPeers())
                             {
@@ -594,8 +622,8 @@ namespace StreamLiveApp
         /// orçamento como se cada quadro valesse o dobro do tempo, e o teto saía dobrado.
         /// Já inicializado, o InitialiseEncoder não faz nada; chamar a cada quadro é barato.
         /// </summary>
-        internal static void PrepareEncoder(FFmpegVideoEncoder encoder, int width, int height)
-            => encoder.InitialiseEncoder(FFmpeg.AutoGen.AVCodecID.AV_CODEC_ID_H264, width, height, TargetFps);
+        internal static void PrepareEncoder(FFmpegVideoEncoder encoder, int width, int height, int fps = TargetFps)
+            => encoder.InitialiseEncoder(FFmpeg.AutoGen.AVCodecID.AV_CODEC_ID_H264, width, height, fps);
 
         public void ForceKeyFrame() => ForceJoinKeyFrame();
 
@@ -669,6 +697,22 @@ namespace StreamLiveApp
                 var bytes = System.Threading.Interlocked.Exchange(ref _statsEncodedBytes, 0);
                 var audio = System.Threading.Interlocked.Exchange(ref _audioFramesSent, 0);
                 var semDestino = System.Threading.Interlocked.Exchange(ref _audioFramesDropped, 0);
+                var pulados = System.Threading.Interlocked.Exchange(ref _statsSkippedBusy, 0);
+                var encodeTicks = System.Threading.Interlocked.Exchange(ref _statsEncodeTicks, 0);
+
+                if (ContarPeers().conectados > 0)
+                {
+                    double encodeMs = encodedFps > 0 ? encodeTicks * 1000.0 / Stopwatch.Frequency / encodedFps : 0;
+                    int antes = _rateGovernor.Fps;
+                    if (_rateGovernor.OnSecond(capturedFps, pulados, encodedFps, encodeMs))
+                    {
+                        var msg = _rateGovernor.Fps < antes
+                            ? $"encoder não dá conta ({pulados} de {capturedFps} quadros pulados, {encodeMs:F0} ms por quadro): codificando a {_rateGovernor.Fps} fps"
+                            : $"encoder com folga ({encodeMs:F0} ms por quadro): tentando {_rateGovernor.Fps} fps de novo";
+                        DiagnosticLog.Info("Video", msg);
+                        DetailedDiagnostics.Event(DiagLabel, msg);
+                    }
+                }
 
                 // O fps mostrado é o da captura: sem público o encode fica parado de propósito,
                 // e "0 fps" faria o host achar que a tela travou. Os kbps são do que saiu.
@@ -678,6 +722,7 @@ namespace StreamLiveApp
                 try { AvaliarSaudeDaLive(capturedFps, encodedFps, bytes, audio, semDestino); } catch { }
             }, null, 1000, 1000);
 
+            DetailedDiagnostics.SetSampler(DiagLabel, true, () => $"alvo={_rateGovernor.Fps}fps");
             DiagnosticLog.Session("papel=host");
             return Task.CompletedTask;
         }
