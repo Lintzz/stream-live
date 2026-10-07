@@ -52,3 +52,18 @@ Verificação: 300 testes (eram 295). `PeriodicKeyFrameTests` removido junto com
 
 ## Versão
 Menor (2.4.0): ganho perceptível na fluidez — exemplo do CONVENCOES. Commits `perf(video)`.
+
+## Ajuste: 60 ou 30 fps conforme o encoder dá conta (2026-10-06)
+Live do dono jogando Valorant (i5-10400F, captura DXGI ~53 fps): encoder a ~24 ms por quadro,
+30 codificados e 23 pulados por segundo, **2,5 Mbps** (nenhum segundo no teto de 5) — quadradinhos
+em todo movimento. Causa: declarado a 60, o controle de taxa dividia o teto em 60 fatias e só 30
+saíam. Medido no encoder real (1080p, metade dos quadros): declarar 60 → 10 KB/quadro, 2,5 Mbps;
+declarar 30 → 20 KB/quadro, 5,0 Mbps. (PSNR descartado: o conteúdo sintético não passa de 28 dB nem
+parado, então não mede jogo.)
+- `EncodeRateGovernor` (puro, 13 casos): desce para 30 com ≥25% pulados por 3 s; tenta 60 de novo
+  com ≤13 ms/quadro por 20 s; tentativa que falha em até 30 s dobra a espera (até 16×)
+- Captura a 30: um quadro a cada ~33 ms (`ShouldTakeFrame`), não mais ao acaso
+- `EncoderBitrateTests.DeclaringThirtyGivesEachFrameTwiceTheBudget` trava o efeito no x264 real
+- Log normal registra cada troca ("encoder não dá conta… codificando a 30 fps"); o detalhado
+  mostra `alvo=60/30fps` na linha da host
+- Pendente: live real jogando com a build nova, para ver a imagem em movimento

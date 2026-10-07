@@ -64,7 +64,7 @@ Atualizado em: 2026-10-06
 - 280 testes xUnit (inclui smoke do .exe) + CI no GitHub Actions
 
 ## Planejado, ainda não feito
-- Publicar a 2.4.0 (intra-refresh + teto 5 Mbps, testado em live real em 2026-10-06: perda 0,93% → 0,00%, congelamentos 178 → 2) — ver auditorias/features/intra-refresh.md
+- Live jogando com a build nova (60/30 automático) e depois publicar a 2.4.0 (intra-refresh + teto 5 Mbps, testado em live real em 2026-10-06: perda 0,93% → 0,00%, congelamentos 178 → 2) — ver auditorias/features/intra-refresh.md
 - Teto de vídeo adaptativo (baixar sozinho quando quem assiste perde pacote) — possível depois, decisão do dono 2026-10-06
 
 ## Radmin VPN (levantado em 2026-10-05, Radmin 2.1.1 / 2.1.4951.1 nesta máquina)
@@ -77,6 +77,7 @@ Atualizado em: 2026-10-06
 - O IP 26.x é da conta, não da rede: adaptador "Radmin VPN" com 26.x prova que o Radmin está ligado, não que você está numa rede específica
 
 ## Decisões
+- 2026-10-06: 60 ou 30 fps automático (EncodeRateGovernor) — jogando, o encoder pulava metade dos quadros e a live usava só 2,5 de 5 Mbps; fixo em 30 recusado pelo dono (perderia os 60 de quem dá conta)
 - 2026-10-06: intra-refresh (keyint 30) no lugar do IDR sob demanda + teto 5 Mbps; viewer detecta o SEI recovery point e só então não retém a imagem (compatível com a 2.3.0 sem mudar o protocolo). Teto adaptativo fica para depois
 - 2026-10-06 18:00–18:37, live real com a build de diagnóstico (82 F8): vídeo pela Radmin (fdfd::), ping 15 ms, perda total 0,93%. 177 de 178 congelamentos = perda → imagem retida esperando keyframe, ~1,1 s cada (= teto MaxLossHold de 1 s: o keyframe pedido não chegou a tempo e a imagem volta com defeito). A perda cresce com a taxa: <1 Mbps 0% dos segundos, 3–5 Mbps ~16%, 5–6 28%, 6–7 58%, 7+ 68–100% — o caminho entre as máquinas satura em ~5–6 Mbps, abaixo do teto de 8 Mbps. Próximo: baixar o teto e/ou trocar o keyframe sob demanda por intra-refresh (ver resposta da sessão)
 - 2026-10-06: log detalhado só na build de diagnóstico (-p:DiagDetalhado=true), a pedido do dono — instalador público não grava. No teste local (live para 127.0.0.1) o ICE escolheu IPv6 público, não a Radmin: o vídeo da live com a amiga provavelmente também saiu pela internet, e o ping exibido (sinalização, pela Radmin) não mede esse caminho

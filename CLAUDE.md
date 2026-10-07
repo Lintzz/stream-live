@@ -161,7 +161,12 @@ com o log detalhado (2026-10-06): a perda crescia com a taxa (5–6 Mbps: 28% do
 68–100%), e cada perda virava ~1,1 s congelado — o viewer retinha a imagem e pedia IDR, e o IDR
 (~127 KB de uma vez) se perdia na mesma rede cheia. Não há mais keyframe periódico nem rajada
 para quem entra: um IDR na conexão e os pedidos do viewer que ainda não decodificou nada
-(piso de 1 s, `MinForcedKeyFrameGap`). **Compatibilidade sem mudar o protocolo:** o viewer
+(piso de 1 s, `MinForcedKeyFrameGap`). **60 ou 30 fps conforme o encoder dá conta** (`EncodeRateGovernor`):
+jogando, o encoder (abaixo do jogo na prioridade) pulava metade dos quadros e, declarado a 60,
+dividia o teto em 60 fatias com só 30 saindo — a live usava metade do teto e movimento virava
+bloco. Pulando ≥25% por 3 s, desce para 30 (cadência regular, `ShouldTakeFrame`) e declara 30,
+o que dobra os bits por quadro; com o encoder folgado (≤13 ms/quadro) por 20 s, tenta 60 de novo,
+dobrando a espera se a tentativa falhar logo. Cada troca recria o encoder (um IDR). **Compatibilidade sem mudar o protocolo:** o viewer
 detecta o SEI *recovery point* (`ContainsRecoveryPointSei`) e só então para de reter/pedir
 (`ShouldHoldForKeyFrameOnLoss`); host até a 2.3.0 não manda o SEI e recebe o comportamento
 antigo, e viewer antigo numa host nova segue pedindo IDR, atendido no piso de 1 s. Opção com nome errado no `x264-params` é ignorada em silêncio — o
