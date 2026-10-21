@@ -5,6 +5,16 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 
 ## [Não lançado]
 
+## [2.5.0] - 2026-10-21
+
+### Adicionado
+- Integração com o Discord Voice Widget, o widget da barra de tarefas: "Iniciar live" no menu dele abre o Stream Live (ou o que já está aberto) direto na escolha da tela, sem precisar procurar o app.
+- Enquanto você transmite, o widget mostra um selo vermelho LIVE com quantas pessoas estão assistindo; passando o mouse, aparece quem são.
+- "Encerrar live" no widget fecha o Stream Live como o X, sem a pergunta de confirmação. O Radmin VPN fecha junto ou não conforme a sua última escolha em "Fechar o Radmin VPN também".
+
+### Compatibilidade
+- Nada muda para quem não usa o widget, nem para os amigos: a live funciona igual com quem está em versões anteriores.
+
 ## [2.4.0] - 2026-10-06
 
 ### Melhorado
