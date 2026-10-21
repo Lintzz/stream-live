@@ -1,5 +1,5 @@
 # Roteiro do projeto
-Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · Atualizado em: 2026-10-06
+Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · Atualizado em: 2026-10-21
 
 ## Próximo
 
@@ -7,6 +7,7 @@ Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · A
 - [ ] `/14-revisao-geral` de novo, depois da release, para fechar em 🟢
 
 ## Concluídas
+- [x] `/build` — 21/10 (v2.5.0 só local: integração com o widget da barra, Iniciar/Encerrar live e contagem de quem assiste)
 - [x] `/build` — 06/10 (v2.4.0 publicada: intra-refresh, teto 5 Mbps, 60/30 fps automático)
 - [x] `/nova-feature` — 06/10 (intra-refresh + teto 5 Mbps; live real: perda 0,93% → 0,00%, congelamentos 178 → 2)
 - [x] Live real com amiga — 06/10 (tudo funcionando; travadinhas no início por perda de pacote, em investigação)
