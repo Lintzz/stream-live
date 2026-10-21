@@ -218,6 +218,18 @@ Entrar numa rede pelo app (UI Automation na janela do Radmin) chegou a ser feito
 linha de comando nem API para isso; o que foi medido (seletores, armadilhas) está em
 `auditorias/features/radmin-e-icone.md`, caso volte.
 
+### Widget da barra (Discord Voice Widget)
+
+O widget do dono (repositório `widget-disc`) tem "Iniciar live"/"Encerrar live" e um selo
+LIVE. A conversa é o `WidgetBridge`, por eventos nomeados `StreamLiveApp.*` (sem rede, nada
+roda até alguém sinalizar): `Transmitir` e `Encerrar` (o widget sinaliza; só existem com o
+app aberto), `AoVivo` (ligado durante a live), `EstadoMudou` (o app avisa a cada mudança,
+inclusive viewer entrando/saindo) e a memória compartilhada `Espectadores` (contagem e nomes,
+formato em `EncodeViewers`; publicada pelo `UpdateViewerCount`).
+Com o app fechado, o widget o abre com `--transmitir` (`App.OpenBroadcastOnStartup`), que
+cai no modal de transmitir depois do aviso da VPN. "Encerrar" fecha como o X, **sem** a
+confirmação, com o Radmin seguindo o `CloseRadminOnExit` salvo. Modo `--demo` não cria a ponte.
+
 ### Persistência e estado
 
 `friends.json` e `settings.json` em `%LOCALAPPDATA%\StreamLiveApp\` (mesma pasta de

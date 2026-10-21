@@ -68,6 +68,10 @@ namespace StreamLiveApp
         // na última vez. Só destrava depois que o arquivo foi lido (ApplyLoadedSettings).
         private bool _loadingSettings = true;
         private bool _isBroadcasting;
+        private WidgetBridge? _widgetBridge;
+
+        /// <summary>Fechamento pedido pelo "Encerrar live" do widget: sem confirmação.</summary>
+        private bool _closeRequestedByWidget;
         private string _hostVideoStats = string.Empty;
         private string _hostAudioStats = string.Empty;
 
@@ -174,6 +178,7 @@ namespace StreamLiveApp
             StartStatusTimer();
             UpdatePlayerControlsState();
             UpdateScreenOverlapWarning();
+            StartWidgetBridge();
 
             LocationChanged += (s2, e2) => UpdateScreenOverlapWarning();
             SizeChanged += (s2, e2) => UpdateScreenOverlapWarning();
@@ -181,6 +186,76 @@ namespace StreamLiveApp
             // Por último: o aviso é modal, e só faz sentido aparecer com a janela já montada
             // e o servidor de sinalização de pé.
             CheckVpnOnStartup();
+
+            // Depois do aviso da VPN, que é modal: os dois juntos abririam um por cima do outro.
+            if (App.OpenBroadcastOnStartup) HandleWidgetTransmitRequest();
+        }
+
+        /// <summary>
+        /// Liga o "Iniciar live"/"Encerrar live" do widget da barra (ver <see cref="WidgetBridge"/>).
+        /// Falhar aqui não pode impedir o app de abrir: só o widget deixa de enxergá-lo.
+        /// </summary>
+        private void StartWidgetBridge()
+        {
+            try
+            {
+                var dispatcher = System.Windows.Application.Current.Dispatcher;
+                _widgetBridge = new WidgetBridge(
+                    onTransmitRequested: () => dispatcher.InvokeAsync(HandleWidgetTransmitRequest),
+                    onCloseRequested: () => dispatcher.InvokeAsync(CloseFromWidget));
+            }
+            catch (Exception ex)
+            {
+                DiagnosticLog.Error("Widget", "Nao foi possivel abrir a ponte com o widget", ex);
+            }
+        }
+
+        private void HandleWidgetTransmitRequest()
+        {
+            DiagnosticLog.Info("Widget", "Iniciar live pedido pelo widget");
+            BringToFront();
+
+            var action = WidgetBridge.DecideTransmitAction(
+                isBroadcasting: _isBroadcasting,
+                canBroadcast: BtnStartStream.IsEnabled && BtnStartStream.Visibility == Visibility.Visible,
+                hasOpenDialog: OwnedWindows.Count > 0);
+
+            if (action == WidgetTransmitAction.OpenBroadcastDialog)
+                BtnStartStream_Click(this, new RoutedEventArgs());
+        }
+
+        /// <summary>
+        /// Minimizada ou atrás de outra janela (o caso comum: o pedido vem do widget, com o
+        /// jogo na frente). O widget libera o primeiro plano antes de sinalizar; sem isso o
+        /// Windows só piscaria o botão na barra.
+        /// </summary>
+        private void BringToFront()
+        {
+            if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+            Activate();
+
+            // Um modal aberto (o de transmitir, a confirmação) é quem precisa do foco.
+            foreach (Window owned in OwnedWindows) owned.Activate();
+        }
+
+        /// <summary>
+        /// "Encerrar live" do widget: igual ao X, mas sem a confirmação — quem pediu já
+        /// escolheu encerrar, e a pergunta abriria com o jogo na frente. O Radmin segue a
+        /// última escolha da caixa "Fechar o Radmin VPN também".
+        /// </summary>
+        private void CloseFromWidget()
+        {
+            DiagnosticLog.Info("Widget", "Encerrar live pedido pelo widget");
+            _closeRequestedByWidget = true;
+
+            // Um modal aberto (o de transmitir, por exemplo) fecha antes, e a janela só depois
+            // que o ShowDialog dele desenrolou: fechar o dono por baixo de um modal em curso
+            // deixaria o clique que o abriu continuando sobre uma janela já fechada.
+            var dialogs = OwnedWindows.Cast<Window>().ToList();
+            foreach (var dialog in dialogs) dialog.Close();
+
+            if (dialogs.Count == 0) Close();
+            else Dispatcher.InvokeAsync(Close, System.Windows.Threading.DispatcherPriority.Background);
         }
 
         /// <summary>
@@ -523,6 +598,7 @@ namespace StreamLiveApp
             int count = names.Count;
             ViewerCountText.Text = count == 1 ? "1 assistindo" : $"{count} assistindo";
             UpdateLivePill(count);
+            if (_isBroadcasting) _widgetBridge?.SetViewers(names);
 
             if (count == 0)
             {
@@ -672,6 +748,10 @@ namespace StreamLiveApp
                     InvitedIps = invitedIps,
                     ExcludedAudioProcessId = ResolveExcludedAudioPid()
                 });
+
+                // Só depois que subiu de fato: falhando, o widget nunca chega a mostrar "ao vivo".
+                _widgetBridge?.SetLive(true);
+                UpdateViewerCount();
             }
             catch (Exception ex)
             {
@@ -708,6 +788,7 @@ namespace StreamLiveApp
         private void ResetBroadcastUi()
         {
             _isBroadcasting = false;
+            _widgetBridge?.SetLive(false);
             BtnStartStream.Visibility = Visibility.Visible;
             BtnStartStream.IsEnabled = false;
             BtnStopStream.Visibility = Visibility.Collapsed;
@@ -1625,6 +1706,14 @@ namespace StreamLiveApp
                 return;
             }
 
+            // "Encerrar live" do widget: a escolha do Radmin é a da última confirmação.
+            if (_closeRequestedByWidget)
+            {
+                _closeRadminOnExit = _settings.CloseRadminOnExit && VpnStatusService.IsRunning();
+                base.OnClosing(e);
+                return;
+            }
+
             // Fechar no meio da live derrubava quem estava assistindo sem aviso nenhum: com
             // gente do outro lado, a confirmação diz quem cai. Sem público, só pergunta se o
             // Radmin está aberto — para oferecer fechá-lo junto. A caixa existe porque o Radmin
@@ -1687,6 +1776,7 @@ namespace StreamLiveApp
 
         protected override void OnClosed(EventArgs e)
         {
+            _widgetBridge?.Dispose();
             _server?.Stop();
             _hostBroadcast?.Dispose();
             foreach (var session in _sessions.ToList())

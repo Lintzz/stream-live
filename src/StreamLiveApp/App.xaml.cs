@@ -14,6 +14,9 @@ public partial class App : System.Windows.Application
 
     private static string LogPath => LogPathLazy.Value;
 
+    /// <summary>Aberto pelo widget para transmitir: o modal de transmitir abre sozinho.</summary>
+    public static bool OpenBroadcastOnStartup { get; private set; }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -22,6 +25,10 @@ public partial class App : System.Windows.Application
         // e os prints do README (ver DemoMode).
         if (e.Args.Any(arg => arg.Equals("--demo", StringComparison.OrdinalIgnoreCase)))
             DemoMode.Enable();
+
+        // "--transmitir": o "Iniciar live" do widget da barra com o app fechado. A janela abre
+        // já no modal de escolher a tela (ver WidgetBridge).
+        OpenBroadcastOnStartup = e.Args.Any(arg => arg.Equals("--transmitir", StringComparison.OrdinalIgnoreCase));
 
         // Primeira linha da sessão no diagnóstico: versão, build do Windows, GPU e dispositivo
         // de áudio. Sem esse cabeçalho, um log recebido de um amigo não diz nem em que máquina
