@@ -5,6 +5,14 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 
 ## [Não lançado]
 
+## [2.6.1] - 2026-11-20
+
+### Corrigido
+- O som da live que você assiste dava pequenas travadinhas e ruídos desde a 2.6.0. Era a correção do atraso de áudio cortando som que não estava atrasado.
+
+### Compatibilidade
+- Basta quem assiste atualizar. Funciona com quem transmite em qualquer versão.
+
 ## [2.6.0] - 2026-11-20
 
 ### Adicionado
