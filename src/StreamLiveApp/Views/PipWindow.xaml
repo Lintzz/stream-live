@@ -1,10 +1,16 @@
 <Window x:Class="StreamLiveApp.PipWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Stream Live - PiP" Height="180" Width="320"
-        WindowStyle="None" Topmost="True" ResizeMode="CanResizeWithGrip"
+        Title="Stream Live - PiP" Height="180" Width="320" MinWidth="160" MinHeight="60"
+        WindowStyle="None" Topmost="True" ResizeMode="CanResize"
         Background="Black" ShowInTaskbar="False"
         MouseEnter="Window_MouseEnter" MouseLeave="Window_MouseLeave">
+    <!-- Sem o WindowChrome, WindowStyle=None com borda redimensionável deixa o Windows desenhar
+         a faixa branca da moldura em cima. Com ele a moldura some e as quatro bordas e os cantos
+         continuam puxando o tamanho (antes só a alça do canto de baixo à direita). -->
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0"/>
+    </WindowChrome.WindowChrome>
     <Grid>
         <Image x:Name="PipVideo" Stretch="Uniform" IsHitTestVisible="False"/>
         <Grid Background="Transparent" MouseLeftButtonDown="Grid_MouseLeftButtonDown"/>
