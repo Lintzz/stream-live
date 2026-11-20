@@ -7,6 +7,7 @@ Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · A
 - [ ] `/14-revisao-geral` de novo, depois da release, para fechar em 🟢
 
 ## Concluídas
+- [x] `/build` — 20/11 (v2.6.1 publicada: travadinhas de áudio da 2.6.0)
 - [x] `/build` — 20/11 (v2.6.0 publicada: PiP, Discord no Windows 10, status na hora, atraso de áudio)
 - [x] `/build` — 21/10 (v2.5.0 publicada: integração com o widget da barra, Iniciar/Encerrar live e contagem de quem assiste)
 - [x] `/build` — 06/10 (v2.4.0 publicada: intra-refresh, teto 5 Mbps, 60/30 fps automático)
