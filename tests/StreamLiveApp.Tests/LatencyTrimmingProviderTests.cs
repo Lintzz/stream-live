@@ -19,6 +19,14 @@ public class LatencyTrimmingProviderTests
     private static byte[] Silence(TimeSpan duration)
         => new byte[BytesFor(duration)];
 
+    /// <summary>Áudio sem nenhum byte zero: o buraco que o BufferedWaveProvider tapa com zeros fica visível.</summary>
+    private static byte[] Tone(TimeSpan duration)
+    {
+        var data = new byte[BytesFor(duration)];
+        Array.Fill(data, (byte)0x11);
+        return data;
+    }
+
     private static int BytesFor(TimeSpan duration)
     {
         var bytes = (int)(Format.AverageBytesPerSecond * duration.TotalSeconds);
@@ -150,6 +158,67 @@ public class LatencyTrimmingProviderTests
 
             Assert.Equal(expected, source.BufferedBytes);
         }
+    }
+
+    /// <summary>
+    /// A 2.6.0 cortava o áudio a cada 2 s e dava travadinhas e ruído. O WaveOutEvent (300 ms em
+    /// 2 buffers) lê de 150 em 150 ms, então antes de cada leitura a fila tem naturalmente uns
+    /// 150 ms, sem atraso nenhum. O corte olhava esse nível, achava que era atraso parado, deixava
+    /// só 80 ms, e a leitura seguinte de 150 ms saía com um buraco de silêncio.
+    /// </summary>
+    [Fact]
+    public void LargeDeviceReadsWithoutDelayAreNeverCut()
+    {
+        var source = NewSource();
+        var trimmer = new LatencyTrimmingProvider(source,
+            TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(80));
+
+        var packet = Tone(TimeSpan.FromMilliseconds(10));
+        var deviceRead = new byte[BytesFor(TimeSpan.FromMilliseconds(150))];
+        long expected = 0;
+
+        // Cinco segundos de live: 15 pacotes de 10 ms chegam, o dispositivo lê 150 ms.
+        for (int i = 0; i < 34; i++)
+        {
+            for (int p = 0; p < 15; p++)
+            {
+                source.AddSamples(packet, 0, packet.Length);
+                expected += packet.Length;
+            }
+
+            trimmer.Read(deviceRead, 0, deviceRead.Length);
+            expected = Math.Max(0, expected - deviceRead.Length);
+
+            Assert.True(Array.IndexOf(deviceRead, (byte)0) < 0, $"buraco de silêncio na leitura {i}");
+            Assert.Equal(expected, source.BufferedBytes);
+        }
+    }
+
+    /// <summary>O mesmo engasgo do teste acima, agora com o dispositivo lendo 150 ms por vez.</summary>
+    [Fact]
+    public void StandingDelayIsCutAlsoWithLargeDeviceReads()
+    {
+        var source = NewSource();
+        var target = TimeSpan.FromMilliseconds(80);
+        var trimmer = new LatencyTrimmingProvider(source, TimeSpan.FromMilliseconds(250), target);
+
+        var engasgo = Tone(TimeSpan.FromMilliseconds(200));
+        source.AddSamples(engasgo, 0, engasgo.Length);
+
+        var packet = Tone(TimeSpan.FromMilliseconds(10));
+        var deviceRead = new byte[BytesFor(TimeSpan.FromMilliseconds(150))];
+        for (int i = 0; i < 34; i++)
+        {
+            for (int p = 0; p < 15; p++) source.AddSamples(packet, 0, packet.Length);
+
+            trimmer.Read(deviceRead, 0, deviceRead.Length);
+
+            // Nunca pode faltar áudio para a leitura: faltar é o buraco que se ouve.
+            Assert.True(Array.IndexOf(deviceRead, (byte)0) < 0, $"buraco de silêncio na leitura {i}");
+        }
+
+        // Depois de ler, o que sobra é o atraso de verdade: voltou para perto do alvo.
+        Assert.InRange(source.BufferedBytes, 0, BytesFor(target) + packet.Length);
     }
 
     [Fact]

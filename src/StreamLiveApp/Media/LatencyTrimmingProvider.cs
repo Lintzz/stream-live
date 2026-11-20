@@ -53,15 +53,20 @@ namespace StreamLiveApp
 
         public int Read(byte[] buffer, int offset, int count)
         {
-            TrimIfBehind();
+            TrimIfBehind(count);
             TrimStandingDelay(count);
             return _source.Read(buffer, offset, count);
         }
 
+        // Tudo aqui mede a fila DEPOIS da leitura que está para acontecer. O WaveOutEvent lê
+        // 150 ms por vez (300 ms em 2 buffers), então antes de cada leitura a fila tem uns
+        // 150 ms sem atraso nenhum. A 2.6.0 media antes da leitura, tomava isso por atraso
+        // parado, deixava 80 ms para uma leitura de 150, e o resto saía como silêncio: uma
+        // travadinha a cada 2 s, ouvida em live real.
         private void TrimStandingDelay(int aboutToRead)
         {
-            int buffered = _source.BufferedBytes;
-            if (buffered < _minBufferedInWindow) _minBufferedInWindow = buffered;
+            int afterRead = Math.Max(0, _source.BufferedBytes - aboutToRead);
+            if (afterRead < _minBufferedInWindow) _minBufferedInWindow = afterRead;
 
             _consumedInWindow += aboutToRead;
             if (_consumedInWindow < _windowBytes) return;
@@ -75,14 +80,15 @@ namespace StreamLiveApp
             _minBufferedInWindow = int.MaxValue;
         }
 
-        private void TrimIfBehind()
+        private void TrimIfBehind(int aboutToRead)
         {
             int excess = _source.BufferedBytes - _maxBytes;
             if (excess <= 0) return;
 
             // Corta até o alvo, não até o teto: senão a fila voltaria a estourar no quadro
-            // seguinte e o descarte viraria constante.
-            Discard(_source.BufferedBytes - _targetBytes);
+            // seguinte e o descarte viraria constante. O alvo vale para DEPOIS da leitura:
+            // cortar até 80 ms antes de uma leitura de 150 deixava um buraco de silêncio.
+            Discard(_source.BufferedBytes - aboutToRead - _targetBytes);
         }
 
         private void Discard(int bytes)
