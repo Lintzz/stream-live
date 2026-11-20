@@ -59,11 +59,53 @@ namespace StreamLiveApp.Services
             }
         }
 
-        private static async Task<bool> ReadStatusAsync(ClientWebSocket ws)
+        /// <summary>
+        /// Avisa um amigo de que este app mudou de estado, para ele sondar na hora em vez de
+        /// esperar até 5 s pela sondagem periódica. Vai como STATUS_CHECK marcado: um app
+        /// antigo só responde o status e ignora o resto, e um tipo novo de mensagem cairia no
+        /// fluxo da live dele. Devolve se o aviso chegou; falhar não importa, porque a
+        /// sondagem periódica continua valendo.
+        /// </summary>
+        public static async Task<bool> NotifyChangedAsync(string ip, int port = 8080)
         {
-            var checkMsg = new SignalingMessage { Type = "STATUS_CHECK" };
-            var bytes = Encoding.UTF8.GetBytes(SignalingMessage.Serialize(checkMsg));
-            await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            if (string.IsNullOrWhiteSpace(ip)) return false;
+
+            try
+            {
+                using var ws = new ClientWebSocket();
+                var connectTask = ws.ConnectAsync(new Uri($"ws://{ip}:{port}"), CancellationToken.None);
+                if (await Task.WhenAny(connectTask, Task.Delay(ConnectTimeout)) != connectTask)
+                {
+                    Observe(connectTask);
+                    return false;
+                }
+                await connectTask;
+
+                var notice = new SignalingMessage { Type = "STATUS_CHECK", Data = SignalingServer.StatusChangedNotice };
+                var bytes = Encoding.UTF8.GetBytes(SignalingMessage.Serialize(notice));
+                await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+
+                // Espera a resposta antes de fechar: fechar logo depois do envio pode derrubar
+                // a conexão antes de o outro lado ler a mensagem.
+                await ReadStatusAsync(ws, sendCheck: false);
+
+                try { await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None); } catch { }
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static async Task<bool> ReadStatusAsync(ClientWebSocket ws, bool sendCheck = true)
+        {
+            if (sendCheck)
+            {
+                var checkMsg = new SignalingMessage { Type = "STATUS_CHECK" };
+                var bytes = Encoding.UTF8.GetBytes(SignalingMessage.Serialize(checkMsg));
+                await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
 
             // Um host transmitindo manda outros quadros no mesmo socket; a resposta pode não vir
             // de primeira, então lemos até achar o STATUS_RESPONSE (ou estourar o tempo).

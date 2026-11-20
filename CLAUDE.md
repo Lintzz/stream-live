@@ -101,6 +101,10 @@ Opus sem medir ponta a ponta.
 `STREAM_STARTED`/`STREAM_STOPPED`/`SOURCE_CHANGED`.
 
 Detalhes que quebram fácil:
+- `STATUS_CHECK` com `Data="CHANGED"` é o **aviso de mudança**: quem abre o app, entra ou sai do
+  ar avisa todos os amigos (`NotifyChangedAsync`), e cada um sonda aquele amigo na hora
+  (`OnFriendStatusChanged`) em vez de esperar até 5 s. App antigo só responde o status. A
+  sondagem comum **não** dispara o aviso, senão os dois lados se sondariam sem parar.
 - O host responde `AUTH_REQUIRED` a **cada** mensagem pré-autenticação (o `CLIENT_CONNECTED` e
   um por candidato ICE). `ViewerSession._passwordPromptOpen` impede que isso abra quatro modais.
 - Só quem manda `CLIENT_CONNECTED` entra em `_viewers`; conexões de `STATUS_CHECK` ficam fora do

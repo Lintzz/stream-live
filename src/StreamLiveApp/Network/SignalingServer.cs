@@ -137,6 +137,17 @@ namespace StreamLiveApp
         /// </summary>
         public event Action<int>? OnViewerCongested;
 
+        /// <summary>
+        /// Um amigo avisou que mudou de estado (abriu o app, entrou ou saiu do ar). Quem ouve
+        /// sonda o status dele na hora, sem esperar a sondagem periódica. O aviso não diz qual é
+        /// o estado novo de propósito: um amigo não consegue forjar "ao vivo" na lista de
+        /// ninguém, e no pior caso só provoca uma sondagem a mais. (IP normalizado)
+        /// </summary>
+        public event Action<string>? OnFriendStatusChanged;
+
+        /// <summary><c>Data</c> do STATUS_CHECK que marca um aviso de mudança (ver <see cref="OnFriendStatusChanged"/>).</summary>
+        internal const string StatusChangedNotice = "CHANGED";
+
         public int ConnectedClientsCount
         {
             get
@@ -471,6 +482,11 @@ namespace StreamLiveApp
                         {
                             var response = new SignalingMessage { Type = "STATUS_RESPONSE", Data = IsStreaming ? "STREAMING" : "IDLE" };
                             SafeSend(socket, SignalingMessage.Serialize(response));
+
+                            // Só o aviso dispara, nunca a sondagem comum: se ela disparasse, os
+                            // dois lados ficariam se sondando um ao outro para sempre.
+                            if (msgObj.Data == StatusChangedNotice)
+                                OnFriendStatusChanged?.Invoke(NormalizeIp(socket.ConnectionInfo.ClientIpAddress));
                             return;
                         }
 

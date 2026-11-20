@@ -176,6 +176,7 @@ namespace StreamLiveApp
             // apontando para esta maquina (ou o loopback) aparece offline ate o proximo ciclo.
             StartSignalingServer();
             StartStatusTimer();
+            _ = NotifyFriendsOfChangeAsync();
             UpdatePlayerControlsState();
             UpdateScreenOverlapWarning();
             StartWidgetBridge();
@@ -306,7 +307,19 @@ namespace StreamLiveApp
             }
 
             if (result == RadminPowerResult.TurnedOn)
+            {
                 ShowTransientStatus("Radmin VPN ficou on-line. Seus amigos aparecem em alguns segundos.");
+
+                // A sondagem e o aviso da abertura saíram com o Radmin desligado e falharam.
+                // A rede virtual leva um instante para subir depois de ligar: duas tentativas
+                // cobrem isso sem esperar a sondagem periódica.
+                foreach (var wait in new[] { 1000, 2000 })
+                {
+                    await Task.Delay(wait);
+                    await RefreshAllFriendsStatusAsync();
+                    await NotifyFriendsOfChangeAsync();
+                }
+            }
             else if (result == RadminPowerResult.Failed)
                 ShowTransientStatus("O Radmin VPN está off-line. Clique com o botão direito no ícone dele, perto do relógio, e em \"Ficar on-line\".");
         }
@@ -333,6 +346,10 @@ namespace StreamLiveApp
                         string.Equals(SignalingServer.NormalizeIp(f.Ip), ip, StringComparison.OrdinalIgnoreCase));
                     ShowTransientStatus($"{friend?.DisplayName ?? ip} tentou entrar com uma versão antiga do Stream Live e precisa atualizar.");
                 });
+            };
+            _server.OnFriendStatusChanged += (ip) =>
+            {
+                System.Windows.Application.Current.Dispatcher.InvokeAsync(() => RecheckFriendAsync(ip));
             };
             _server.OnViewerCongested += (count) =>
             {
@@ -505,6 +522,35 @@ namespace StreamLiveApp
             var status = await Services.FriendStatusService.CheckAsync(friend.Ip);
             friend.IsOnline = status.IsOnline;
             friend.IsStreaming = status.IsStreaming;
+        }
+
+        /// <summary>
+        /// Um amigo avisou que mudou de estado (<see cref="SignalingServer.OnFriendStatusChanged"/>):
+        /// sonda só ele, na hora.
+        /// </summary>
+        private async Task RecheckFriendAsync(string ip)
+        {
+            var matches = _friends?
+                .Where(f => string.Equals(SignalingServer.NormalizeIp(f.Ip), ip, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (matches == null || matches.Count == 0) return;
+
+            await Task.WhenAll(matches.Select(CheckFriendStatusAsync));
+            _friendsView?.Refresh();
+            UpdateSidebarEmptyStates();
+        }
+
+        /// <summary>
+        /// Avisa todos os amigos de que este app mudou de estado (abriu, entrou ou saiu do ar),
+        /// para a bolinha mudar na lista deles na hora em vez de até 5 s depois. Só adianta a
+        /// sondagem: amigo com versão antiga, ou que não recebeu, vê na sondagem seguinte.
+        /// </summary>
+        private Task NotifyFriendsOfChangeAsync()
+        {
+            if (DemoMode.IsEnabled || _friends == null) return Task.CompletedTask;
+
+            var ips = _friends.Select(f => f.Ip).ToList();
+            return Task.WhenAll(ips.Select(ip => Services.FriendStatusService.NotifyChangedAsync(ip)));
         }
 
         private void UpdateSidebarEmptyStates()
@@ -752,6 +798,7 @@ namespace StreamLiveApp
                 // Só depois que subiu de fato: falhando, o widget nunca chega a mostrar "ao vivo".
                 _widgetBridge?.SetLive(true);
                 UpdateViewerCount();
+                _ = NotifyFriendsOfChangeAsync();
             }
             catch (Exception ex)
             {
@@ -779,6 +826,7 @@ namespace StreamLiveApp
             if (_hostBroadcast != null)
             {
                 await _hostBroadcast.StopAsync();
+                _ = NotifyFriendsOfChangeAsync();
             }
 
             BtnStartStream.IsEnabled = true;
@@ -1778,6 +1826,14 @@ namespace StreamLiveApp
         {
             _widgetBridge?.Dispose();
             _server?.Stop();
+
+            // Depois de derrubar o servidor: quem recebe o aviso sonda e já encontra a porta
+            // fechada, então você sai da lista deles na hora. Fora da thread de UI (os awaits
+            // voltariam para ela, que está presa aqui) e com teto, para não segurar o fechamento.
+            if (_server != null)
+            {
+                try { Task.Run(NotifyFriendsOfChangeAsync).Wait(TimeSpan.FromMilliseconds(1000)); } catch { }
+            }
             _hostBroadcast?.Dispose();
             foreach (var session in _sessions.ToList())
             {
