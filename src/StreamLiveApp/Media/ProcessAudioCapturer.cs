@@ -8,7 +8,7 @@ namespace StreamLiveApp
 {
     /// <summary>
     /// Captures audio from a specific process using the ApplicationLoopback.dll
-    /// (Windows 10 Build 20348+ / Windows 11 required).
+    /// (Windows 10 2004, build 19041, ou mais novo).
     /// Uses P/Invoke to call the native C++ DLL that wraps the Windows
     /// ActivateAudioInterfaceAsync process loopback API.
     /// </summary>
@@ -187,7 +187,7 @@ namespace StreamLiveApp
 
         private const string StartFailureMessage =
             "Falha ao iniciar captura de áudio do processo. " +
-            "Verifique se o Windows suporta essa funcionalidade (Windows 10 Build 20348+ ou Windows 11).";
+            "Verifique se o Windows suporta essa funcionalidade (Windows 10 versão 2004 ou mais nova).";
 
         /// <summary>
         /// Called by the native DLL when audio data is available.
@@ -213,22 +213,31 @@ namespace StreamLiveApp
         }
 
         /// <summary>
-        /// Checks if the current Windows version supports process-specific audio capture.
-        /// Requires Windows 10 Build 20348 or later.
+        /// Primeiro build com captura de áudio por processo: o Windows 10 2004. É a mesma linha
+        /// de corte da captura de aplicativo do OBS.
+        ///
+        /// Aqui já esteve 20348, o build do SDK que a Microsoft cita no exemplo da API. Só que o
+        /// Windows 10 de usuário para no 19045, então todo host com Windows 10 caía no loopback
+        /// do sistema inteiro sem nem tentar, e o Discord vazava só na live dele. Se este Windows
+        /// recusar a ativação, o <see cref="AudioCapturer"/> continua caindo para o loopback.
         /// </summary>
+        internal const int MinimumBuild = 19041;
+
+        /// <summary>Se este Windows tem captura de áudio por processo.</summary>
         public static bool IsSupported()
         {
             try
             {
-                var version = Environment.OSVersion.Version;
-                // Windows 10 Build 20348+ or Windows 11
-                return version.Major >= 10 && version.Build >= 20348;
+                return IsSupported(Environment.OSVersion.Version);
             }
             catch
             {
                 return false;
             }
         }
+
+        internal static bool IsSupported(Version version) =>
+            version.Major > 10 || (version.Major == 10 && version.Build >= MinimumBuild);
 
         public void Dispose()
         {

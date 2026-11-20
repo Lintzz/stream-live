@@ -229,4 +229,4 @@ Num clone que já veio sem as DLLs, `git lfs pull` resolve.
 ## 🐛 Solução de Problemas
 
 - **Erros de .NET:** Certifique-se de que o executável `.\.dotnet\dotnet.exe` está presente e funcional no diretório do projeto.
-- **Processo Ausente / Sem Áudio:** Pode ocorrer se a API `ApplicationLoopback` não for suportada no seu Windows (é recomendado usar Windows 10 Build 20348+ ou Windows 11).
+- **Processo Ausente / Sem Áudio:** Pode ocorrer se a API `ApplicationLoopback` não for suportada no seu Windows (exige Windows 10 versão 2004, build 19041, ou mais novo).

@@ -177,7 +177,7 @@ Medições e alternativas descartadas (AMF, decode por GPU) em `auditorias/11-pe
 ### Áudio: exclusão por processo
 
 `AudioCapturer` usa `WasapiLoopbackCapture` para o sistema inteiro, ou `ProcessAudioCapturer`
-(P/Invoke em `NativeLibs/ApplicationLoopback.dll`, Windows 10 20348+) para **excluir** um
+(P/Invoke em `NativeLibs/ApplicationLoopback.dll`, Windows 10 2004+, build 19041) para **excluir** um
 processo. O processo excluído é **sempre o Discord**: sem isso a mesa se escuta em eco. O alvo é
 fixado por **nome** (`AudioExclusionService.ResolvePid` resolve o PID a cada live, porque o
 programa pode ter sido reaberto); com o Discord fechado o PID sai 0 e a captura volta ao loopback

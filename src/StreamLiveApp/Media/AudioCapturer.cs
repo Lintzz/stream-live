@@ -122,12 +122,12 @@ namespace StreamLiveApp
                 {
                     DiagnosticLog.Warn("Audio",
                         $"Captura por processo indisponivel neste Windows (build {Environment.OSVersion.Version.Build}, " +
-                        "exige 20348+); caindo para o loopback do sistema inteiro. " +
+                        "exige " + ProcessAudioCapturer.MinimumBuild + "+); caindo para o loopback do sistema inteiro. " +
                         "O audio do programa excluido volta a ser transmitido.");
 
                     OnCaptureError?.Invoke(
                         "Seu Windows não suporta captura de áudio por processo.\n" +
-                        "Requer Windows 10 Build 20348+ ou Windows 11.\n" +
+                        "Requer Windows 10 versão 2004 ou mais nova.\n" +
                         "O áudio de todo o sistema será capturado.");
                     
                     // Fallback to system-wide loopback
