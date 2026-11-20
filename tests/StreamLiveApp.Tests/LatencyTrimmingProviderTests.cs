@@ -95,6 +95,63 @@ public class LatencyTrimmingProviderTests
         Assert.Equal(0, source.BufferedBytes % Format.BlockAlign);
     }
 
+    /// <summary>
+    /// O bug: um engasgo do PC (jogo abrindo, CPU cheia) deixa ~200 ms na fila. Abaixo do teto
+    /// de 250 nada cortava, e como o áudio entra e sai no mesmo ritmo, a fila ficava parada ali
+    /// para sempre, com o som atrasado em relação ao vídeo até fechar a live.
+    /// </summary>
+    [Fact]
+    public void StandingDelayBelowTheCeilingIsCutBackToTheTarget()
+    {
+        var source = NewSource();
+        var target = TimeSpan.FromMilliseconds(80);
+        var trimmer = new LatencyTrimmingProvider(source, TimeSpan.FromMilliseconds(250), target);
+
+        var engasgo = Silence(TimeSpan.FromMilliseconds(200));
+        source.AddSamples(engasgo, 0, engasgo.Length);
+
+        // Três segundos de entrada e saída no mesmo ritmo, 20 ms por vez.
+        var chunk = Silence(TimeSpan.FromMilliseconds(20));
+        var read = new byte[chunk.Length];
+        for (int i = 0; i < 150; i++)
+        {
+            source.AddSamples(chunk, 0, chunk.Length);
+            trimmer.Read(read, 0, read.Length);
+        }
+
+        Assert.InRange(source.BufferedBytes, 0, BytesFor(target) + chunk.Length);
+    }
+
+    /// <summary>
+    /// Rede com rajadas: a fila sobe e desce, mas chega perto de zero a cada ciclo. Isso não é
+    /// atraso parado, e cortar aqui só criaria buracos no som.
+    /// </summary>
+    [Fact]
+    public void JitterThatDrainsTheQueueIsNeverCut()
+    {
+        var source = NewSource();
+        var trimmer = new LatencyTrimmingProvider(source,
+            TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(80));
+
+        var burst = Silence(TimeSpan.FromMilliseconds(200));
+        var read = new byte[BytesFor(TimeSpan.FromMilliseconds(20))];
+        long expected = 0;
+
+        for (int i = 0; i < 200; i++)
+        {
+            if (i % 10 == 0)
+            {
+                source.AddSamples(burst, 0, burst.Length);
+                expected += burst.Length;
+            }
+
+            trimmer.Read(read, 0, read.Length);
+            expected = Math.Max(0, expected - read.Length);
+
+            Assert.Equal(expected, source.BufferedBytes);
+        }
+    }
+
     [Fact]
     public void ExposesTheSourceFormat()
     {

@@ -91,7 +91,9 @@ encoder, no viewer só decodifica. `EnsureCapturers()` só roda no host; `_isHos
 
 O áudio já viajou em Opus pela trilha do WebRTC (v1.0.18–v1.0.21) e foi **revertido** por nunca
 ter funcionado em campo. Custa ~1,4 Mbps por viewer e não sincroniza com o vídeo; a deriva de
-relógio é contida pelo `LatencyTrimmingProvider` (teto 250 ms, alvo 80 ms). Não reintroduza o
+relógio é contida pelo `LatencyTrimmingProvider` (teto 250 ms, alvo 80 ms). Abaixo do teto, o atraso parado
+(engasgo do PC deixando ~200 ms na fila para sempre) sai pelo **menor** nível da fila numa
+janela de 2 s de áudio: rajada de rede desce perto de zero e não é cortada. Não reintroduza o
 Opus sem medir ponta a ponta.
 
 ### Handshake de sala (`SignalingServer` ↔ `ViewerSession`)
