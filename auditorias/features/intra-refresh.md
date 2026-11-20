@@ -49,6 +49,10 @@ Verificação: 300 testes (eram 295). `PeriodicKeyFrameTests` removido junto com
 ## Pendente
 - Nitidez a 5 Mbps: o dono nota queda pequena às vezes e aceitou (2026-10-06)
 - Teto adaptativo (baixar sozinho quando quem assiste perde pacote): possível depois, por decisão do dono
+- Faixa visível na perda (2026-11-20): o dono viu a varredura passar da esquerda para a direita,
+  às vezes esverdeada, ao assistir a live de outra pessoa. É o estrago da perda sendo curado pela
+  varredura. Alternativa oferecida: reter o último quadro bom até a varredura terminar (≤1 s a
+  60 fps, até 2 s a 30). O dono **preferiu deixar como está**: a faixa em vez de congelar.
 
 ## Versão
 Menor (2.4.0): ganho perceptível na fluidez — exemplo do CONVENCOES. Commits `perf(video)`.
