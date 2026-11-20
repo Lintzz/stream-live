@@ -5,6 +5,20 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 
 ## [Não lançado]
 
+## [2.6.0] - 2026-11-20
+
+### Adicionado
+- Quando você abre o app, começa ou encerra a live, ou fecha o app, seus amigos ficam sabendo na hora. Antes a bolinha na lista deles levava até 5 segundos para mudar.
+
+### Corrigido
+- Picture in Picture sem a faixa branca em cima da janela.
+- O Picture in Picture agora redimensiona por qualquer borda ou canto e mantém o formato do vídeo, sem barras pretas em volta. Se quem transmite trocar para uma tela de outro formato, a janela acompanha.
+- O som do Discord não vaza mais na live de quem transmite pelo Windows 10. A exclusão do Discord só funcionava no Windows 11.
+- O áudio da live que você assiste não fica mais atrasado em relação ao vídeo depois que o computador engasga (jogo abrindo, CPU cheia). Em até 2 segundos ele volta a acompanhar a imagem.
+
+### Compatibilidade
+- A live funciona normalmente com quem está em versões anteriores. O aviso instantâneo só funciona quando os dois amigos estão na 2.6.0; com quem não atualizou, a bolinha continua mudando em até 5 segundos.
+
 ## [2.5.0] - 2026-10-21
 
 ### Adicionado
