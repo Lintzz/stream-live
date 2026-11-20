@@ -1,5 +1,5 @@
 # Contexto do projeto
-Atualizado em: 2026-10-21
+Atualizado em: 2026-11-20
 
 ## Projeto
 - Tipo: app desktop Windows (WPF) — transmissão de tela e áudio entre amigos na Radmin VPN
@@ -37,7 +37,7 @@ Atualizado em: 2026-10-21
 - Logs: `%LOCALAPPDATA%\StreamLiveApp\error.log` e `audio_error.log`
 - Build (skill `/build`): `if (Test-Path publish_zip) { Remove-Item -Recurse -Force publish_zip }; .\.dotnet\dotnet.exe publish src\StreamLiveApp\StreamLiveApp.csproj -c Release -r win-x64 --self-contained true -o publish_zip; & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" build\setup.iss` → `StreamLive_Setup.exe` na raiz (copiar para builds/windows/ com a versão no nome)
 - Release: anexar um `.exe` e o `.sha256` dele: `(Get-FileHash <exe> -Algorithm SHA256).Hash.ToLower() + "  <nome do exe>" | Set-Content <exe>.sha256`
-- Versão atual: 2.5.0 · última entrega: v2.5.0, 2026-10-21, publicada no GitHub em 2026-10-26 (https://github.com/Lintzz/stream-live/releases/tag/v2.5.0); builds/windows/StreamLive-Setup-2.5.0.exe (121 MB) + .sha256; 326 testes; integração com o widget da barra testada na máquina do dono com espectadores locais (127.0.0.1), sem live real com amigo (captura, encoder e rede não mudaram); anterior: v2.4.0 (2026-10-06)
+- Versão atual: 2.6.0 · última entrega: v2.6.0, 2026-11-20, publicada no GitHub (https://github.com/Lintzz/stream-live/releases/tag/v2.6.0); builds/windows/StreamLive-Setup-2.6.0.exe (121 MB) + .sha256; 353 testes; PiP sem faixa branca e preso à proporção do vídeo, exclusão do Discord no Windows 10 (build 19041+), aviso instantâneo de status entre amigos, corte do atraso de áudio parado; nada testado em live real com amigo; anterior: v2.5.0 (2026-10-21)
 - Asset da release: sempre `StreamLive_Setup.exe` + `StreamLive_Setup.exe.sha256` (nome usado por todas as releases); a cópia em builds/ leva a versão no nome
 - Versão mora em: `<Version>` do StreamLiveApp.csproj (gera AppInfo.Version e build/version.iss)
 - Dependências conferidas em: 2026-10-06 — 0 vulnerabilidades (app e testes); atrasadas: NAudio 2.2.1→3.1.0 (major), Vortice 3.6.2→3.8.3, System.Drawing.Common 10.0.11→10.0.12, Websocket.Client 5.5.0→5.5.1
