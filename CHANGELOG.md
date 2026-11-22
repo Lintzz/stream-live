@@ -5,6 +5,14 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 
 ## [Não lançado]
 
+## [2.6.2] - 2026-11-22
+
+### Corrigido
+- Com a janela maximizada, o topo não fica mais cortado. A barra de título e a borda de cima das lives aparecem inteiras.
+
+### Compatibilidade
+- Só muda a janela de quem atualizar. Funciona com amigos em qualquer versão.
+
 ## [2.6.1] - 2026-11-20
 
 ### Corrigido
