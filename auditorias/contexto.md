@@ -1,5 +1,5 @@
 # Contexto do projeto
-Atualizado em: 2026-11-20
+Atualizado em: 2026-11-22
 
 ## Projeto
 - Tipo: app desktop Windows (WPF) — transmissão de tela e áudio entre amigos na Radmin VPN
@@ -37,7 +37,7 @@ Atualizado em: 2026-11-20
 - Logs: `%LOCALAPPDATA%\StreamLiveApp\error.log` e `audio_error.log`
 - Build (skill `/build`): `if (Test-Path publish_zip) { Remove-Item -Recurse -Force publish_zip }; .\.dotnet\dotnet.exe publish src\StreamLiveApp\StreamLiveApp.csproj -c Release -r win-x64 --self-contained true -o publish_zip; & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" build\setup.iss` → `StreamLive_Setup.exe` na raiz (copiar para builds/windows/ com a versão no nome)
 - Release: anexar um `.exe` e o `.sha256` dele: `(Get-FileHash <exe> -Algorithm SHA256).Hash.ToLower() + "  <nome do exe>" | Set-Content <exe>.sha256`
-- Versão atual: 2.6.1 · última entrega: v2.6.1, 2026-11-20, publicada no GitHub (https://github.com/Lintzz/stream-live/releases/tag/v2.6.1); builds/windows/StreamLive-Setup-2.6.1.exe (121 MB) + .sha256; 355 testes; corrige as travadinhas de áudio da 2.6.0 (corte de atraso medido antes da leitura de 150 ms do WaveOutEvent); da 2.6.0 o dono confirmou em live real: PiP, redimensionar e status na hora; Discord no Windows 10 ainda não testado; anterior: v2.6.0 (2026-11-20)
+- Versão atual: 2.6.2 · última entrega: v2.6.2, 2026-11-22, publicada no GitHub (https://github.com/Lintzz/stream-live/releases/tag/v2.6.2); builds/windows/StreamLive-Setup-2.6.2.exe (121 MB) + .sha256; 359 testes; corrige o topo cortado da janela maximizada (margem da moldura do WindowChrome, conferido no app maximizado no monitor 2); traz também o modo de teste CLAUDE_SEGUNDA_TELA=1; anterior: v2.6.1 (2026-11-20, travadinhas de áudio da 2.6.0; Discord no Windows 10 ainda não testado)
 - Asset da release: sempre `StreamLive_Setup.exe` + `StreamLive_Setup.exe.sha256` (nome usado por todas as releases); a cópia em builds/ leva a versão no nome
 - Versão mora em: `<Version>` do StreamLiveApp.csproj (gera AppInfo.Version e build/version.iss)
 - Dependências conferidas em: 2026-10-06 — 0 vulnerabilidades (app e testes); atrasadas: NAudio 2.2.1→3.1.0 (major), Vortice 3.6.2→3.8.3, System.Drawing.Common 10.0.11→10.0.12, Websocket.Client 5.5.0→5.5.1
