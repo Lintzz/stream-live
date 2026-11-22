@@ -92,6 +92,7 @@ namespace StreamLiveApp
             var size = WindowHelper.FitToWorkArea(new System.Windows.Size(Width, Height), SystemParameters.WorkArea);
             Width = size.Width;
             Height = size.Height;
+            PlaceOnSecondaryScreenIfAsked();
 
             DataContext = this;
 
@@ -1380,6 +1381,27 @@ namespace StreamLiveApp
             SetSidebarChromeVisible(true);
             SyncToggle(BtnTheater, false);
             SyncToggle(BtnFullscreen, false);
+        }
+
+        /// <summary>
+        /// Teste na máquina do dono (<c>CLAUDE_SEGUNDA_TELA=1</c>): a tela principal costuma estar
+        /// com um jogo em tela cheia, então a janela abre centralizada num monitor que não é o
+        /// principal e sem roubar o foco. Sem a variável, ou com um monitor só, nada muda.
+        /// </summary>
+        private void PlaceOnSecondaryScreenIfAsked()
+        {
+            if (Environment.GetEnvironmentVariable("CLAUDE_SEGUNDA_TELA") != "1") return;
+
+            var secondary = WindowHelper.GetCapturableScreens().FirstOrDefault(s => !s.IsPrimary);
+            if (secondary == null) return;
+
+            // Os limites vêm em pixels; a janela ainda não tem DPI próprio, vale o do sistema.
+            var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
+            var b = secondary.ScreenBounds;
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Left = b.Left / dpi.DpiScaleX + (b.Width / dpi.DpiScaleX - Width) / 2;
+            Top = b.Top / dpi.DpiScaleY + (b.Height / dpi.DpiScaleY - Height) / 2;
+            ShowActivated = false;
         }
 
         private void UpdateMaximizedInset()
