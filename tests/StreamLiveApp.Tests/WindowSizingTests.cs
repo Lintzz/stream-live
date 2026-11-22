@@ -60,6 +60,20 @@ public class WindowSizingTests
     }
 
     [Theory]
+    [InlineData(WindowState.Maximized, ResizeMode.CanResize, 8, 1.0, 8)]      // 100%: 4 de moldura + 4 de borda extra
+    [InlineData(WindowState.Maximized, ResizeMode.CanResize, 11, 1.25, 8.8)]  // 125%: pixels viram DIPs
+    [InlineData(WindowState.Normal, ResizeMode.CanResize, 8, 1.0, 0)]         // janela solta não passa da tela
+    [InlineData(WindowState.Maximized, ResizeMode.NoResize, 8, 1.0, 0)]       // tela cheia: sem moldura, nada vaza
+    public void MaximizedWindowIsPulledInsideTheScreen(WindowState state, ResizeMode resize, int framePixels, double dpiScale, double expected)
+    {
+        // Maximizada com WindowChrome, a janela passa da tela pela espessura da moldura e o
+        // topo da barra de título e das lives ficava cortado.
+        var inset = WindowHelper.MaximizedInset(state, resize, framePixels, dpiScale);
+
+        Assert.Equal(new Thickness(expected), inset);
+    }
+
+    [Theory]
     [InlineData(0, "AO VIVO")]
     [InlineData(1, "AO VIVO · 1")]
     [InlineData(12, "AO VIVO · 12")]

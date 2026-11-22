@@ -95,6 +95,10 @@ namespace StreamLiveApp
 
             DataContext = this;
 
+            // Maximizada, a janela passa da tela pela moldura escondida do WindowChrome.
+            StateChanged += (s, ev) => UpdateMaximizedInset();
+            DpiChanged += (s, ev) => UpdateMaximizedInset();
+
             _mouseIdleTimer = new System.Windows.Threading.DispatcherTimer();
             _mouseIdleTimer.Interval = TimeSpan.FromSeconds(2.5);
             _mouseIdleTimer.Tick += MouseIdleTimer_Tick;
@@ -1378,8 +1382,17 @@ namespace StreamLiveApp
             SyncToggle(BtnFullscreen, false);
         }
 
+        private void UpdateMaximizedInset()
+        {
+            var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
+            int frame = WindowHelper.MaximizedFramePixels((uint)Math.Round(dpi.PixelsPerInchY));
+            RootGrid.Margin = WindowHelper.MaximizedInset(WindowState, ResizeMode, frame, dpi.DpiScaleY);
+        }
+
         private void ApplyImmersiveMargins(bool immersive)
         {
+            // Entrar/sair da tela cheia troca o ResizeMode sem necessariamente mudar o estado.
+            UpdateMaximizedInset();
             ViewerArea.Margin = immersive ? new Thickness(0) : new Thickness(15, 0, 15, 15);
             VideoControlsGradient.CornerRadius = immersive ? new CornerRadius(0) : new CornerRadius(0, 0, 12, 12);
         }

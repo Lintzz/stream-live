@@ -91,6 +91,43 @@ namespace StreamLiveApp
             return new System.Windows.Point(left, top);
         }
 
+        private const int SM_CXSIZEFRAME = 32;
+        private const int SM_CXPADDEDBORDER = 92;
+
+        [DllImport("user32.dll")]
+        private static extern int GetSystemMetricsForDpi(int nIndex, uint dpi);
+
+        /// <summary>
+        /// Margem para a janela principal quando maximizada. Com WindowChrome e borda
+        /// redimensionável, o Windows maximiza a janela "por fora" da tela pela espessura da
+        /// moldura (que o WindowChrome esconde): ~8 px em cada lado ficavam fora da tela, e o
+        /// topo da barra de título e das lives saía cortado. Tela cheia (NoResize, sem moldura)
+        /// não vaza e não leva margem.
+        /// </summary>
+        internal static System.Windows.Thickness MaximizedInset(
+            System.Windows.WindowState state, System.Windows.ResizeMode resize, int framePixels, double dpiScale)
+        {
+            if (state != System.Windows.WindowState.Maximized || resize == System.Windows.ResizeMode.NoResize
+                || framePixels <= 0 || dpiScale <= 0)
+                return new System.Windows.Thickness(0);
+
+            return new System.Windows.Thickness(Math.Round(framePixels / dpiScale, 2));
+        }
+
+        /// <summary>Moldura que o Windows põe para fora da tela ao maximizar, em pixels, para o DPI dado.</summary>
+        internal static int MaximizedFramePixels(uint dpi)
+        {
+            try
+            {
+                return GetSystemMetricsForDpi(SM_CXSIZEFRAME, dpi) + GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+            }
+            catch
+            {
+                // Sem a API (não deve acontecer no Windows 10 2004+ que o app exige): o valor de 100%.
+                return (int)Math.Round(8 * dpi / 96.0);
+            }
+        }
+
         /// <summary>
         /// Tamanho da miniatura que cabe em <paramref name="maxWidth"/> × <paramref name="maxHeight"/>
         /// sem distorcer a tela (monitor em pé, ultrawide).
