@@ -7,6 +7,7 @@ Perfil: B — Pessoal, publicado · Estágio: producao (releases no GitHub) · A
 - [ ] `/14-revisao-geral` de novo, depois da release, para fechar em 🟢
 
 ## Concluídas
+- [x] `/build` — 23/11 (v2.6.3 publicada: reconexão, fim de live fechando sozinho, tela cheia)
 - [x] `/build` — 22/11 (v2.6.2 publicada: topo cortado da janela maximizada)
 - [x] `/build` — 20/11 (v2.6.1 publicada: travadinhas de áudio da 2.6.0)
 - [x] `/build` — 20/11 (v2.6.0 publicada: PiP, Discord no Windows 10, status na hora, atraso de áudio)
