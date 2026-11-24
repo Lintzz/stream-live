@@ -136,6 +136,13 @@ Detalhes que quebram fácil:
   quem ainda não autenticou, e o viewer esquece a chave no `STREAM_STOPPED`. Com chave ativa, o
   `SignalingClient` **descarta** o que não decifra, exceto o controle em claro (`AUTH_*`,
   `STATUS_RESPONSE`, `PONG`) — usar o dado bruto anulava a autenticação do AES-GCM.
+- `STREAM_STOPPED` (e o `STATUS_RESPONSE` `IDLE`) **fecham** a sessão do viewer
+  (`ViewerSession.EndLive` → `LiveEnded`): a célula sai da grade e o aviso vai para o rodapé.
+  Esperar conectado pela próxima live não funciona — com a reconexão suprimida o viewer para
+  de mandar PING e o host o derruba em 20 s. Sem live aberta, tela cheia e teatro saem sozinhos.
+- Reconexão: cada tentativa do `SignalingClient` cria um `WebsocketClient` novo. Com a
+  reconexão da biblioteca desligada, a queda marca o cliente como parado e o `Reconnect()`
+  dele não faz nada (`SignalingClientReconnectTests`).
 - `AuthThrottle`: 5 senhas erradas por IP bloqueiam 60 s (`AUTH_LOCKED`), contadas por IP e não
   por conexão. Mensagem de texto acima de 64 KB derruba a conexão. Com a lista de amigos
   desligada, `ShouldAcceptConnection` ainda exige a faixa da Radmin (`26.0.0.0/8`).
