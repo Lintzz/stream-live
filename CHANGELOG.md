@@ -5,6 +5,16 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · Versões
 
 ## [Não lançado]
 
+## [2.6.3] - 2026-11-23
+
+### Corrigido
+- Quando a conexão com quem transmite cai, o app reconecta sozinho de verdade. Antes ele contava as tentativas sem tentar nada e terminava em "Conexão perdida".
+- Quando o amigo encerra a live, ela fecha sozinha, aparece um aviso no rodapé e você volta para a lista de amigos. O amigo deixa de aparecer como "assistindo", e quando ele voltar ao ar um clique basta.
+- Se a live fecha com você em tela cheia ou no modo teatro, o app sai desse modo sozinho. Antes só o Esc tirava dali.
+
+### Compatibilidade
+- Muda só o lado de quem assiste. Funciona com amigos em qualquer versão.
+
 ## [2.6.2] - 2026-11-22
 
 ### Corrigido
