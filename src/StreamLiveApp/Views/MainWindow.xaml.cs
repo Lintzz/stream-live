@@ -1132,6 +1132,11 @@ namespace StreamLiveApp
 
             bool hasSessions = count > 0;
 
+            // Sem live, tela cheia e teatro prendem: a barra do player some (abaixo) e o botão
+            // de amigos já fica escondido nesses modos — só o Esc tirava dali, sem nada na tela
+            // dizendo isso. Acontecia quando o host encerrava com você em tela cheia.
+            if (!hasSessions && TitleBarGrid.Visibility == Visibility.Collapsed) ExitFullscreen();
+
             // Sem live os controles do player não têm o que controlar — e, só com opacidade
             // zero, continuavam no Tab: o foco sumia em botões invisíveis.
             VideoControlsBar.Visibility = hasSessions ? Visibility.Visible : Visibility.Collapsed;
