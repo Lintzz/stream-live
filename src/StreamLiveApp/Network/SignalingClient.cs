@@ -68,12 +68,43 @@ namespace StreamLiveApp
 
         public async Task StartAsync(string ipAddress, int port = 8080)
         {
-            var url = new Uri($"ws://{ipAddress}:{port}");
-            _client = new WebsocketClient(url);
-            _client.IsReconnectionEnabled = false;
+            _url = new Uri($"ws://{ipAddress}:{port}");
+            _client = CreateSocket(_url);
 
-            _client.MessageReceived.Subscribe(msg =>
+            _pingTimer = new System.Threading.Timer(PingTick, null, PingInterval, PingInterval);
+
+            MarkActivity();
+            await _client.Start();
+        }
+
+        private Uri? _url;
+
+        // Já houve uma conexão de pé? Cada tentativa usa um WebsocketClient novo, e para ele a
+        // conexão é sempre a "Initial" — quem diz se foi reconexão somos nós.
+        private bool _everConnected;
+
+        /// <summary>
+        /// Um WebsocketClient novo, com os eventos ligados. A reconexão cria um por tentativa:
+        /// com a reconexão da biblioteca desligada, a queda marca o cliente como parado, e o
+        /// <c>Reconnect()</c> de um cliente parado volta sem tentar nada — o laço contava
+        /// "Reconectando... (1/8)" até "(8/8)" sem nenhuma tentativa real.
+        ///
+        /// Os eventos de um cliente que já foi trocado são ignorados: o Dispose dele ainda
+        /// avisa a desconexão, e isso não pode abrir outro laço nem apagar a chave da sala nova.
+        /// </summary>
+        private WebsocketClient CreateSocket(Uri url)
+        {
+            var socket = new WebsocketClient(url)
             {
+                IsReconnectionEnabled = false,
+                // Sem isto a biblioteca tenta de novo sozinha, um minuto depois de uma falha
+                // ao conectar — em paralelo com o nosso laço.
+                ErrorReconnectTimeout = null
+            };
+
+            socket.MessageReceived.Subscribe(msg =>
+            {
+                if (!ReferenceEquals(socket, _client)) return;
                 MarkActivity();
 
                 if (msg.MessageType == System.Net.WebSockets.WebSocketMessageType.Text && msg.Text != null)
@@ -87,19 +118,23 @@ namespace StreamLiveApp
                 }
             });
 
-            _client.ReconnectionHappened.Subscribe(info =>
+            socket.ReconnectionHappened.Subscribe(info =>
             {
+                if (!ReferenceEquals(socket, _client)) return;
                 Debug.WriteLine($"[Client] Reconnection happened, type: {info.Type}");
                 _reconnectCts?.Cancel();
                 _reconnectAttempts = 0;
                 _hadHealthySession = true;
                 Interlocked.Exchange(ref _reconnecting, 0);
                 MarkActivity();
-                OnConnected?.Invoke(info.Type != ReconnectionType.Initial);
+                bool isReconnect = _everConnected || info.Type != ReconnectionType.Initial;
+                _everConnected = true;
+                OnConnected?.Invoke(isReconnect);
             });
 
-            _client.DisconnectionHappened.Subscribe(info =>
+            socket.DisconnectionHappened.Subscribe(info =>
             {
+                if (!ReferenceEquals(socket, _client)) return;
                 Debug.WriteLine($"[Client] Disconnected: {info.Type}");
 
                 // A chave só vale enquanto o socket autenticado existir.
@@ -114,10 +149,7 @@ namespace StreamLiveApp
                 BeginReconnect();
             });
 
-            _pingTimer = new System.Threading.Timer(PingTick, null, PingInterval, PingInterval);
-
-            MarkActivity();
-            await _client.Start();
+            return socket;
         }
 
         private void MarkActivity() => Interlocked.Exchange(ref _lastActivityTicks, DateTime.UtcNow.Ticks);
@@ -263,19 +295,36 @@ namespace StreamLiveApp
 
                     if (token.IsCancellationRequested) return;
 
+                    if (_url == null || _intentionalStop || _stopped) return;
+
+                    // Troca primeiro e descarta depois: o aviso de desconexão do socket velho
+                    // chega com _client já apontando para o novo e é ignorado.
+                    var old = _client;
+                    var fresh = CreateSocket(_url);
+                    _client = fresh;
+                    try { old?.Dispose(); } catch { }
+
                     try
                     {
-                        if (_client != null) await _client.Reconnect();
+                        await fresh.StartOrFail();
                     }
                     catch (Exception ex)
                     {
                         Debug.WriteLine($"[Client] Reconnect attempt {_reconnectAttempts} failed: {ex.Message}");
                     }
 
-                    if (_client != null && _client.IsRunning)
+                    // O Stop() pode ter chegado durante a tentativa: o socket que ele descartou
+                    // pode ter sido o anterior, então este não pode sobrar aberto.
+                    if (_stopped)
+                    {
+                        try { fresh.Dispose(); } catch { }
+                        return;
+                    }
+
+                    if (fresh.IsRunning)
                     {
                         MarkActivity();
-                        return; // ReconnectionHappened will fire and reset state
+                        return; // o ReconnectionHappened do socket novo zera o estado
                     }
                 }
 
@@ -331,8 +380,12 @@ namespace StreamLiveApp
             _client.Send(message);
         }
 
+        // Só o Stop(): diferente do _intentionalStop, que o host liga e desliga (STREAM_STOPPED).
+        private volatile bool _stopped;
+
         public void Stop()
         {
+            _stopped = true;
             _intentionalStop = true;
             _reconnectCts?.Cancel();
             _pingTimer?.Dispose();
