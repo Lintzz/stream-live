@@ -59,6 +59,18 @@ namespace StreamLiveApp
         /// <summary>Disparado quando o host exige senha. bool = a senha anterior foi recusada.</summary>
         public event Action<ViewerSession, bool> PasswordRequested = delegate {};
 
+        /// <summary>
+        /// O host encerrou a live (ou não estava no ar). A sessão já se desconectou sozinha; a
+        /// janela tira a célula e mostra o texto no rodapé. Antes a célula ficava em
+        /// "Transmissão encerrada", o amigo continuava marcado como assistindo mesmo offline, e
+        /// quem estava em tela cheia ficava preso nela sem a barra do player.
+        /// Sai na thread de UI.
+        /// </summary>
+        public event Action<ViewerSession, string> LiveEnded = delegate {};
+
+        /// <summary>Porta da sinalização do host. Só os testes trocam: o app usa sempre a 8080.</summary>
+        internal int Port { get; init; } = 8080;
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         private WriteableBitmap? _videoBitmap;
@@ -275,7 +287,11 @@ namespace StreamLiveApp
 
             _watchdog ??= new System.Threading.Timer(WatchdogTick, null, WatchdogInterval, WatchdogInterval);
 
-            await _client!.StartAsync(Ip, 8080);
+            await _client!.StartAsync(Ip, Port);
+
+            // A resposta "não está em live" pode chegar antes de o StartAsync voltar: a sessão
+            // já se fechou (EndLive), e marcar como conectada aqui deixaria o amigo "assistindo".
+            if (_disposed || _streamEnded) return;
 
             IsConnected = true;
             Friend.IsWatching = true;
@@ -396,14 +412,7 @@ namespace StreamLiveApp
                 }
                 if (message == "STREAM_STOPPED")
                 {
-                    _streamEnded = true;
-                    _client?.SuppressReconnect();
-                    // A chave era desta live. A próxima chega em claro (STREAM_STARTED) e, se
-                    // tiver senha, passa pelo AUTH de novo — com a senha lembrada, sem modal.
-                    _client?.DisableEncryption();
-                    try { _streamManager?.Stop(); } catch { }
-                    VideoBitmap = null;
-                    SetHealth(ConnectionHealth.Encerrada);
+                    EndLive($"{FriendName} encerrou a live");
                     return;
                 }
                 if (message == "STREAM_STARTED")
@@ -422,7 +431,7 @@ namespace StreamLiveApp
                 {
                     if (parsed.Data == "IDLE" && !_streamEnded)
                     {
-                        SetHealth(ConnectionHealth.Encerrada, $"{FriendName} não está em live");
+                        EndLive($"{FriendName} não está em live");
                     }
                     return;
                 }
@@ -482,6 +491,25 @@ namespace StreamLiveApp
                 LatencyMs = ms;
                 DetailedDiagnostics.ViewerRtt(FriendName, ms);
             };
+        }
+
+        /// <summary>
+        /// Fim da live do lado do host: desconecta e avisa a janela para fechar a célula.
+        ///
+        /// Ficar conectado esperando a próxima live não funcionava: o viewer parava de mandar
+        /// PING (a reconexão fica suprimida depois do STREAM_STOPPED), o host derrubava a
+        /// conexão calada depois de 20 s, e o STREAM_STARTED da live seguinte nunca chegava —
+        /// era preciso fechar e clicar em assistir de novo. Fechando, o amigo volta a aparecer
+        /// na lista como em live assim que ele recomeçar, e um clique basta.
+        /// </summary>
+        private void EndLive(string notice)
+        {
+            if (_disposed || _streamEnded) return;
+            _streamEnded = true;
+            _client?.SuppressReconnect();
+            SetHealth(ConnectionHealth.Encerrada, notice);
+            Disconnect();
+            RaiseOnUi(() => LiveEnded?.Invoke(this, notice));
         }
 
         /// <summary>Abre o modal de senha, no máximo um por vez.</summary>

@@ -960,6 +960,7 @@ namespace StreamLiveApp
 
             var session = new ViewerSession(friend);
             session.PasswordRequested += Session_PasswordRequested;
+            session.LiveEnded += Session_LiveEnded;
             if (_isBroadcasting) session.ApplyBroadcastMute(true);
 
             _sessions.Add(session);
@@ -998,11 +999,20 @@ namespace StreamLiveApp
             }
         }
 
+        /// <summary>O host encerrou: a célula sai sozinha e o aviso fica no rodapé.</summary>
+        private void Session_LiveEnded(ViewerSession session, string notice)
+        {
+            if (!_sessions.Contains(session)) return;
+            CloseSession(session);
+            ShowTransientStatus(notice);
+        }
+
         private void CloseSession(ViewerSession session)
         {
             if (session == null) return;
 
             session.PasswordRequested -= Session_PasswordRequested;
+            session.LiveEnded -= Session_LiveEnded;
             // Dispose, e não só Disconnect: a sessão carrega o timer do vigia de vídeo parado,
             // que sem isto continuaria rodando depois de a célula sair da grade.
             session.Dispose();
